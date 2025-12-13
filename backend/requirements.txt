@@ -5,7 +5,7 @@ ultralytics==8.3.0
 torch==2.0.1+cpu
 torchvision==0.15.2+cpu
 pytesseract==0.3.10
-opencv-python==4.8.1.78
+opencv-python-headless==4.8.1.78
 Pillow==10.1.0
 numpy==1.26.2
 werkzeug==3.0.1
