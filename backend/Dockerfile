@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 COPY requirements.txt .
+# Uninstall opencv-python if present, then install opencv-python-headless
+RUN pip uninstall -y opencv-python opencv-contrib-python || true
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code (.dockerignore will exclude large files)
