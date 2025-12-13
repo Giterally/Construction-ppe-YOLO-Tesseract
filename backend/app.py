@@ -46,8 +46,18 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
-# Initialize detector
-detector = SafetyComplianceDetector()
+# Initialize OpenAI client for AI-powered OCR text cleanup (optional)
+openai_client = None
+openai_api_key = os.getenv('OPENAI_API_KEY')
+if openai_api_key:
+    try:
+        from openai import OpenAI
+        openai_client = OpenAI(api_key=openai_api_key)
+    except Exception as e:
+        print(f"⚠️  OpenAI client initialization failed for detector: {e}")
+
+# Initialize detector with optional OpenAI client for text cleanup
+detector = SafetyComplianceDetector(openai_client=openai_client)
 
 # Initialize document processor
 doc_processor = DocumentProcessor()
