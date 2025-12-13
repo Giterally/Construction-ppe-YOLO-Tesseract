@@ -22,6 +22,8 @@ class SafetyComplianceDetector:
         """
         self.model = YOLO('yolov8n.pt')
         self.openai_client = openai_client
+        # Import OpenAI for type hints
+        from openai import OpenAI
         
     def analyze_image(self, image_path: str) -> Dict:
         """
@@ -119,13 +121,31 @@ class SafetyComplianceDetector:
             img_original = Image.open(image_path)
             text4 = self._ocr_with_config(img_original, psm=6)
             
-            # Return the longest non-empty result (most likely to be correct)
+            # Collect all results with validation
             results = [text1, text2, text3, text4]
             non_empty = [t for t in results if t.strip()]
             
             if non_empty:
-                # Return the result with most characters (usually most accurate)
-                return max(non_empty, key=len).strip()
+                # Filter out gibberish and get confidence scores
+                valid_results = []
+                for text in non_empty:
+                    if self._is_valid_text(text):
+                        # Get confidence score for this text
+                        conf = self._get_ocr_confidence(img_cv, text)
+                        if conf > 30:  # Minimum 30% confidence
+                            valid_results.append((text, conf))
+                
+                if valid_results:
+                    # Return the result with highest confidence
+                    best_text, best_conf = max(valid_results, key=lambda x: x[1])
+                    # Final AI validation for low-confidence results
+                    if best_conf < 50 and self.openai_client:
+                        if not self._ai_validate_text(best_text):
+                            return ""  # Reject as gibberish
+                    return best_text.strip()
+                else:
+                    # No valid text found after filtering
+                    return ""
             else:
                 return ""
                 
@@ -134,7 +154,11 @@ class SafetyComplianceDetector:
             # Fallback to simple OCR
             try:
                 img = Image.open(image_path)
-                return self._ocr_with_config(img)
+                text = self._ocr_with_config(img)
+                # Validate fallback result
+                if text and self._is_valid_text(text):
+                    return text.strip()
+                return ""
             except Exception as e2:
                 print(f"Warning: Tesseract OCR not available: {e2}")
                 return ""
