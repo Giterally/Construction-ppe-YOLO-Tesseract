@@ -223,9 +223,20 @@ class SafetyComplianceDetector:
         # Remove leading/trailing whitespace
         cleaned = cleaned.strip()
         
-        # Use AI to further clean and segment if available
+        # Always run rule-based segmentation first (works even without AI)
+        if cleaned:
+            cleaned = self._rule_based_segmentation(cleaned)
+        
+        # Use AI to further improve if available
         if cleaned and self.openai_client:
-            cleaned = self._ai_cleanup_text(cleaned)
+            try:
+                ai_cleaned = self._ai_cleanup_text(cleaned)
+                # Use AI result if it's better (longer or more structured)
+                if ai_cleaned and len(ai_cleaned) > len(cleaned) * 0.8:  # AI result should be reasonable
+                    cleaned = ai_cleaned
+            except Exception as e:
+                print(f"AI text cleanup error, using rule-based result: {e}")
+                # Keep rule-based result if AI fails
         
         return cleaned
     
