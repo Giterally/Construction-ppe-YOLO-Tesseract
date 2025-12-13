@@ -269,6 +269,125 @@ class SafetyComplianceDetector:
         
         return cleaned
     
+    def _get_ocr_confidence(self, img_cv, text: str) -> float:
+        """
+        Get average confidence score for OCR text by re-running OCR with confidence data
+        """
+        try:
+            gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+            img_pil = Image.fromarray(gray)
+            
+            # Get detailed data with confidence scores
+            data = pytesseract.image_to_data(img_pil, config='--psm 6 --oem 3', output_type=pytesseract.Output.DICT)
+            
+            confidences = [float(conf) for conf in data['conf'] if int(conf) > 0]
+            if confidences:
+                return sum(confidences) / len(confidences)
+            return 0.0
+        except:
+            return 50.0  # Default confidence if we can't calculate
+    
+    def _is_valid_text(self, text: str) -> bool:
+        """
+        Validate if extracted text is likely real text (not gibberish)
+        Checks for:
+        - Reasonable word length patterns
+        - Presence of common words/patterns
+        - Not too many random capital letters
+        - Reasonable character distribution
+        """
+        if not text or len(text.strip()) < 3:
+            return False
+        
+        text = text.strip()
+        
+        # Check 1: Too many random capital letters in middle of words (gibberish pattern)
+        # Real text has mostly lowercase with occasional capitals
+        words = text.split()
+        if len(words) > 0:
+            random_caps = sum(1 for w in words if len(w) > 2 and w[1:].isupper())
+            if random_caps > len(words) * 0.3:  # More than 30% random caps = likely gibberish
+                return False
+        
+        # Check 2: Too many consecutive consonants (unlikely in English)
+        # Pattern like "preracicns" has too many consonant clusters
+        consonant_clusters = re.findall(r'[bcdfghjklmnpqrstvwxyz]{4,}', text.lower())
+        if len(consonant_clusters) > len(text) / 10:  # Too many long consonant clusters
+            return False
+        
+        # Check 3: Check for common safety sign words (if present, likely valid)
+        safety_keywords = [
+            'danger', 'warning', 'caution', 'hard', 'hat', 'required', 'must', 'wear',
+            'scaffolding', 'incomplete', 'complete', 'no', 'access', 'authorized',
+            'personnel', 'footwear', 'visibility', 'protective', 'area', 'site'
+        ]
+        text_lower = text.lower()
+        has_safety_words = any(keyword in text_lower for keyword in safety_keywords)
+        
+        # Check 4: Reasonable word length (most words 2-15 chars)
+        word_lengths = [len(w) for w in words if w.isalpha()]
+        if word_lengths:
+            avg_length = sum(word_lengths) / len(word_lengths)
+            if avg_length > 12:  # Average word too long = likely gibberish
+                return False
+        
+        # Check 5: If no safety keywords and text looks random, be more strict
+        if not has_safety_words:
+            # Check for vowel-consonant balance (real words have vowels)
+            vowels = sum(1 for c in text.lower() if c in 'aeiou')
+            if len(text) > 10 and vowels < len(text) * 0.2:  # Less than 20% vowels = likely gibberish
+                return False
+        
+        # Check 6: Too many random character patterns (like "HN EXIM Wek oe Neee")
+        # Check for patterns of 2-3 letter words with random caps
+        short_random_words = sum(1 for w in words if len(w) <= 3 and w.isupper() and not w in ['NO', 'HARD', 'HAT', 'PPE', 'CDM', 'HSE'])
+        if len(words) > 0 and short_random_words > len(words) * 0.4:  # More than 40% random short caps = gibberish
+            return False
+        
+        return True
+    
+    def _ai_validate_text(self, text: str) -> bool:
+        """
+        Use AI to validate if text is gibberish or real text
+        Returns True if text is valid, False if gibberish
+        """
+        if not text or not self.openai_client:
+            return True  # If no AI, assume valid (fallback to other checks)
+        
+        try:
+            prompt = f"""Is this text from a construction safety sign real text or OCR gibberish?
+
+Text: "{text}"
+
+Respond with ONLY "valid" or "gibberish". 
+- "valid" if it contains real words/phrases that could be on a safety sign
+- "gibberish" if it's random characters, OCR errors, or meaningless text
+
+Examples:
+- "Danger | Scaffolding incomplete" → valid
+- "preracicns HN EXIM Wek oe Neee" → gibberish
+- "WARNING | Hard hat required" → valid
+- "Recs iface Wee Paenbmars esa aie" → gibberish
+
+Response:"""
+
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a text validation expert. Determine if OCR text is real or gibberish."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,
+                max_tokens=10
+            )
+            
+            result = response.choices[0].message.content.strip().lower()
+            return "valid" in result
+            
+        except Exception as e:
+            print(f"AI text validation error: {e}")
+            return True  # If AI fails, assume valid (fallback to other checks)
+    
     def _ai_cleanup_text(self, text: str) -> str:
         """
         Use OpenAI to clean up OCR text, fix errors, and segment into readable sections
