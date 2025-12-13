@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { API_URL } from '../config'
 
 interface ImageUploadProps {
   onUpload: (imageFile: File, documentId?: string) => void
@@ -26,7 +27,7 @@ export default function ImageUpload({ onUpload }: ImageUploadProps) {
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch('http://localhost:5001/api/documents')
+      const response = await fetch(`${API_URL}/api/documents`)
       if (response.ok) {
         const data = await response.json()
         setDocuments(data.documents || [])
@@ -309,7 +310,7 @@ function DocumentRequirementsPreview({ documentId }: { documentId: string }) {
       try {
         // We'll get this from the backend when document is selected
         // For now, we can fetch it from the analyze endpoint or create a new endpoint
-        const response = await fetch(`http://localhost:5001/api/documents/${documentId}/requirements`)
+        const response = await fetch(`${API_URL}/api/documents/${documentId}/requirements`)
         if (response.ok) {
           const data = await response.json()
           setRequirements(data.requirements)

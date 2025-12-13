@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_URL } from '../config'
 
 interface PastAnalysis {
   id: string
@@ -37,7 +38,7 @@ export default function Sidebar({ onSelectAnalysis }: SidebarProps) {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch('http://localhost:5001/api/analyses?limit=20')
+      const response = await fetch(`${API_URL}/api/analyses?limit=20`)
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
@@ -79,7 +80,7 @@ export default function Sidebar({ onSelectAnalysis }: SidebarProps) {
     }
 
     try {
-      const response = await fetch(`http://localhost:5001/api/analyses/${analysisId}`, {
+      const response = await fetch(`${API_URL}/api/analyses/${analysisId}`, {
         method: 'DELETE'
       })
 

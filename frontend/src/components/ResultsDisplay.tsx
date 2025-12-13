@@ -1,3 +1,5 @@
+import { API_URL } from '../config'
+
 interface ResultsDisplayProps {
   result: {
     people_count: number
@@ -121,14 +123,14 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
         <div className="image-container">
           <h3>Original Image</h3>
           <img
-            src={`http://localhost:5001${result.original_image}`}
+            src={`${API_URL}${result.original_image}`}
             alt="Original"
           />
         </div>
         <div className="image-container">
           <h3>Detected Workers</h3>
           <img
-            src={`http://localhost:5001${result.annotated_image}`}
+            src={`${API_URL}${result.annotated_image}`}
             alt="Annotated"
           />
         </div>

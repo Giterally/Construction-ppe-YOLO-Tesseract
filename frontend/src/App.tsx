@@ -3,6 +3,7 @@ import Header from './components/Header'
 import ImageUpload from './components/ImageUpload'
 import ResultsDisplay from './components/ResultsDisplay'
 import Sidebar from './components/Sidebar'
+import { API_URL } from './config'
 import './styles/App.css'
 
 interface AnalysisResult {
@@ -67,7 +68,7 @@ function App() {
 
     try {
       // Use enhanced endpoint
-      const response = await fetch('http://localhost:5001/api/analyze-with-document', {
+      const response = await fetch(`${API_URL}/api/analyze-with-document`, {
         method: 'POST',
         body: formData,
       })
@@ -99,8 +100,8 @@ function App() {
       violations: analysis.violations || [],
       detections: analysis.detections || [],
       compliance_score: analysis.compliance_score,
-      original_image: analysis.original_image_url?.replace('http://localhost:5001', '') || '',
-      annotated_image: analysis.annotated_image_url?.replace('http://localhost:5001', '') || '',
+      original_image: analysis.original_image_url?.replace(/^https?:\/\/[^/]+/, '') || '',
+      annotated_image: analysis.annotated_image_url?.replace(/^https?:\/\/[^/]+/, '') || '',
       document_provided: analysis.document_provided || false,
       document_id: analysis.document_id,
       document_name: analysis.document_name,
