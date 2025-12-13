@@ -16,10 +16,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy application code (.dockerignore will exclude large files)
 COPY . .
-
-# Create uploads directory
-RUN mkdir -p uploads
 
 # Create uploads directory
 RUN mkdir -p uploads
