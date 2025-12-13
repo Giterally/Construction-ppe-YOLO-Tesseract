@@ -142,14 +142,84 @@ class SafetyComplianceDetector:
             custom_config = f'--psm {psm} --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?;:()[]- '
             
             text = pytesseract.image_to_string(img, config=custom_config).strip()
+            # Clean up OCR errors
+            text = self._clean_ocr_text(text)
             return text
         except Exception as e:
             print(f"OCR config error: {e}")
             # Fallback to default OCR
             try:
-                return pytesseract.image_to_string(img).strip()
+                text = pytesseract.image_to_string(img).strip()
+                text = self._clean_ocr_text(text)
+                return text
             except:
                 return ""
+    
+    def _clean_ocr_text(self, text: str) -> str:
+        """
+        Clean up common OCR errors and artifacts
+        """
+        if not text:
+            return text
+        
+        # Common OCR character substitutions
+        replacements = {
+            # Common misreads
+            'f]': 'r',
+            'f,': 'r',
+            'fal': 'ling',
+            'IAN': 'AN',
+            'ae': 'a',
+            '[a]': '',
+            ']': '',
+            '[': '',
+            # Fix common letter confusions
+            '0': 'O',  # In words, 0 is usually O
+            '1': 'I',  # In words, 1 is usually I
+            '5': 'S',  # Sometimes confused
+            # Remove trailing artifacts
+            'f]': 'r',
+            'f,': 'r',
+        }
+        
+        # Apply replacements
+        cleaned = text
+        for old, new in replacements.items():
+            cleaned = cleaned.replace(old, new)
+        
+        # Remove standalone punctuation artifacts
+        import re
+        # Remove brackets and their contents if they're artifacts
+        cleaned = re.sub(r'\[[a-z]\]', '', cleaned, flags=re.IGNORECASE)
+        # Remove trailing punctuation that's likely OCR error
+        cleaned = re.sub(r'[\]\[,;]+$', '', cleaned)
+        
+        # Fix common word patterns in safety signs
+        safety_word_fixes = {
+            'Dangerf': 'Danger',
+            'Dangerf]': 'Danger',
+            'Scaffoldingfal': 'Scaffolding',
+            'Scaffoldingf': 'Scaffolding',
+            'incomplete[a]': 'incomplete',
+            'incomplete]': 'incomplete',
+            'incompletef': 'incomplete',
+            'HARD HAT': 'HARD HAT',
+            'HARD HATf': 'HARD HAT',
+            'REQUIREDf': 'REQUIRED',
+            'REQUIRED]': 'REQUIRED',
+        }
+        
+        for wrong, correct in safety_word_fixes.items():
+            if wrong in cleaned:
+                cleaned = cleaned.replace(wrong, correct)
+        
+        # Clean up multiple spaces
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        
+        # Remove leading/trailing whitespace
+        cleaned = cleaned.strip()
+        
+        return cleaned
     
     def _check_compliance(self, people_count: int, signage_text: str) -> List[str]:
         """Check for compliance violations based on signage and detections"""
