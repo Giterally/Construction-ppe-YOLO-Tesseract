@@ -33,7 +33,8 @@ class SafetyComplianceDetector:
             'signage_text': str,
             'violations': List[str],
             'detections': List[Dict],
-            'compliance_score': int (0-100)
+            'compliance_score': int (0-100),
+            'ocr_processing_steps': List[Dict]  # New: processing steps for debugging
         }
         """
         # 1. Run YOLO detection
@@ -65,7 +66,7 @@ class SafetyComplianceDetector:
                     people_count += 1
         
         # 3. Run Tesseract OCR with preprocessing
-        signage_text = self._extract_text_with_ocr(image_path)
+        signage_text, ocr_steps = self._extract_text_with_ocr(image_path)
         
         # 4. Compliance analysis
         violations = self._check_compliance(people_count, signage_text)
@@ -76,94 +77,149 @@ class SafetyComplianceDetector:
             'signage_text': signage_text,
             'violations': violations,
             'detections': detections,
-            'compliance_score': compliance_score
+            'compliance_score': compliance_score,
+            'ocr_processing_steps': ocr_steps
         }
     
-    def _extract_text_with_ocr(self, image_path: str) -> str:
+    def _extract_text_with_ocr(self, image_path: str) -> tuple[str, List[Dict]]:
         """
         Extract text from image using Tesseract OCR with proper preprocessing
         Tries multiple preprocessing methods and OCR configurations for best results
+        Returns: (final_text, processing_steps)
         """
+        steps = []
         try:
             # Load image with OpenCV for preprocessing
             img_cv = cv2.imread(image_path)
+            steps.append({"step": 1, "name": "Load Image", "status": "started"})
             if img_cv is None:
+                steps.append({"step": 1, "name": "Load Image", "status": "failed", "note": "OpenCV failed, using PIL fallback"})
                 # Fallback to PIL if OpenCV fails
                 img = Image.open(image_path)
-                return self._ocr_with_config(img)
+                text, sub_steps = self._ocr_with_config(img, return_steps=True)
+                steps.extend(sub_steps)
+                return text, steps
+            steps.append({"step": 1, "name": "Load Image", "status": "completed", "note": f"Image size: {img_cv.shape}"})
             
+            steps.append({"step": 2, "name": "Preprocessing Methods", "status": "started"})
             # Method 1: Grayscale + threshold (best for high contrast signs)
             gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+            steps.append({"step": 2.1, "name": "Grayscale Conversion", "status": "completed"})
             
             # Apply adaptive thresholding for better text extraction
             thresh = cv2.adaptiveThreshold(
                 gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                 cv2.THRESH_BINARY, 11, 2
             )
+            steps.append({"step": 2.2, "name": "Adaptive Thresholding", "status": "completed", "method": "Method 1"})
             
             # Convert back to PIL Image for Tesseract
             img_processed = Image.fromarray(thresh)
-            text1 = self._ocr_with_config(img_processed, psm=6)  # Uniform block
+            text1, steps1 = self._ocr_with_config(img_processed, psm=6, return_steps=True, method_name="Method 1: Adaptive Threshold")
+            steps.extend(steps1)
             
             # Method 2: Grayscale + Otsu thresholding
             _, thresh2 = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             img_processed2 = Image.fromarray(thresh2)
-            text2 = self._ocr_with_config(img_processed2, psm=7)  # Single text line
+            steps.append({"step": 2.3, "name": "Otsu Thresholding", "status": "completed", "method": "Method 2"})
+            text2, steps2 = self._ocr_with_config(img_processed2, psm=7, return_steps=True, method_name="Method 2: Otsu Threshold")
+            steps.extend(steps2)
             
             # Method 3: Enhanced contrast + grayscale
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
             enhanced = clahe.apply(gray)
             _, thresh3 = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             img_processed3 = Image.fromarray(thresh3)
-            text3 = self._ocr_with_config(img_processed3, psm=6)
+            steps.append({"step": 2.4, "name": "CLAHE Contrast Enhancement + Otsu", "status": "completed", "method": "Method 3"})
+            text3, steps3 = self._ocr_with_config(img_processed3, psm=6, return_steps=True, method_name="Method 3: CLAHE + Otsu")
+            steps.extend(steps3)
             
             # Method 4: Original image (fallback)
             img_original = Image.open(image_path)
-            text4 = self._ocr_with_config(img_original, psm=6)
+            steps.append({"step": 2.5, "name": "Original Image (No Preprocessing)", "status": "completed", "method": "Method 4"})
+            text4, steps4 = self._ocr_with_config(img_original, psm=6, return_steps=True, method_name="Method 4: Original Image")
+            steps.extend(steps4)
             
+            steps.append({"step": 3, "name": "Text Validation & Filtering", "status": "started"})
             # Collect all results with validation
-            results = [text1, text2, text3, text4]
-            non_empty = [t for t in results if t.strip()]
+            results = [
+                ("Method 1: Adaptive Threshold", text1),
+                ("Method 2: Otsu Threshold", text2),
+                ("Method 3: CLAHE + Otsu", text3),
+                ("Method 4: Original Image", text4)
+            ]
+            non_empty = [(name, t) for name, t in results if t.strip()]
+            
+            steps.append({"step": 3.1, "name": "Raw OCR Results", "status": "completed", 
+                         "results": [{"method": name, "text": text[:50] + "..." if len(text) > 50 else text, "length": len(text)} 
+                                     for name, text in results]})
             
             if non_empty:
                 # Filter out gibberish and get confidence scores
                 valid_results = []
-                for text in non_empty:
-                    if self._is_valid_text(text):
+                for method_name, text in non_empty:
+                    is_valid = self._is_valid_text(text)
+                    steps.append({"step": 3.2, "name": f"Validate: {method_name}", "status": "completed",
+                                "text_preview": text[:50] + "..." if len(text) > 50 else text,
+                                "is_valid": is_valid})
+                    
+                    if is_valid:
                         # Get confidence score for this text
                         conf = self._get_ocr_confidence(img_cv, text)
+                        steps.append({"step": 3.3, "name": f"Confidence Check: {method_name}", "status": "completed",
+                                    "confidence": round(conf, 1), "passed": conf > 30})
                         if conf > 30:  # Minimum 30% confidence
-                            valid_results.append((text, conf))
+                            valid_results.append((text, conf, method_name))
                 
                 if valid_results:
                     # Return the result with highest confidence
-                    best_text, best_conf = max(valid_results, key=lambda x: x[1])
+                    best_text, best_conf, best_method = max(valid_results, key=lambda x: x[1])
+                    steps.append({"step": 3.4, "name": "Select Best Result", "status": "completed",
+                                "selected_method": best_method, "confidence": round(best_conf, 1)})
+                    
                     # Final AI validation for low-confidence results
                     if best_conf < 50 and self.openai_client:
-                        if not self._ai_validate_text(best_text):
-                            return ""  # Reject as gibberish
-                    return best_text.strip()
+                        ai_valid = self._ai_validate_text(best_text)
+                        steps.append({"step": 3.5, "name": "AI Validation", "status": "completed",
+                                    "confidence": round(best_conf, 1), "ai_valid": ai_valid})
+                        if not ai_valid:
+                            steps.append({"step": 3.6, "name": "Final Result", "status": "rejected", 
+                                        "reason": "AI validation failed - text appears to be gibberish"})
+                            return "", steps
+                    
+                    # Apply final cleaning
+                    final_text = self._clean_ocr_text(best_text)
+                    steps.append({"step": 4, "name": "Final Text Cleaning", "status": "completed",
+                                "original": best_text[:100] + "..." if len(best_text) > 100 else best_text,
+                                "cleaned": final_text[:100] + "..." if len(final_text) > 100 else final_text})
+                    
+                    steps.append({"step": 5, "name": "OCR Processing Complete", "status": "completed",
+                                "final_text": final_text, "final_length": len(final_text)})
+                    return final_text.strip(), steps
                 else:
-                    # No valid text found after filtering
-                    return ""
+                    steps.append({"step": 3.6, "name": "Final Result", "status": "rejected", 
+                                "reason": "No valid text found after filtering (all results failed validation or confidence check)"})
+                    return "", steps
             else:
-                return ""
+                steps.append({"step": 3.6, "name": "Final Result", "status": "rejected", 
+                            "reason": "No text extracted from any preprocessing method"})
+                return "", steps
                 
         except Exception as e:
+            steps.append({"step": "error", "name": "OCR Processing Error", "status": "failed", "error": str(e)})
             print(f"OCR preprocessing error: {e}")
             # Fallback to simple OCR
             try:
                 img = Image.open(image_path)
-                text = self._ocr_with_config(img)
-                # Validate fallback result
-                if text and self._is_valid_text(text):
-                    return text.strip()
-                return ""
+                text, sub_steps = self._ocr_with_config(img, return_steps=True)
+                steps.extend(sub_steps)
+                return text, steps
             except Exception as e2:
+                steps.append({"step": "error", "name": "Fallback OCR Error", "status": "failed", "error": str(e2)})
                 print(f"Warning: Tesseract OCR not available: {e2}")
-                return ""
+                return "", steps
     
-    def _ocr_with_config(self, img: Image.Image, psm: int = 6) -> str:
+    def _ocr_with_config(self, img: Image.Image, psm: int = 6, return_steps: bool = False, method_name: str = "") -> str | tuple[str, List[Dict]]:
         """
         Run Tesseract OCR with specific configuration
         PSM modes:
@@ -171,22 +227,48 @@ class SafetyComplianceDetector:
         7 = Treat the image as a single text line
         8 = Treat the image as a single word
         """
+        steps = []
+        if return_steps:
+            steps.append({"step": f"ocr_{psm}", "name": f"Tesseract OCR (PSM {psm})", "status": "started", "method": method_name})
+        
         try:
             # Tesseract configuration for signs and text
             custom_config = f'--psm {psm} --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?;:()[]- '
             
-            text = pytesseract.image_to_string(img, config=custom_config).strip()
+            raw_text = pytesseract.image_to_string(img, config=custom_config).strip()
+            if return_steps:
+                steps.append({"step": f"ocr_{psm}_raw", "name": "Raw OCR Output", "status": "completed", 
+                            "text": raw_text[:100] + "..." if len(raw_text) > 100 else raw_text, "length": len(raw_text)})
+            
             # Clean up OCR errors
-            text = self._clean_ocr_text(text)
-            return text
+            cleaned_text = self._clean_ocr_text(raw_text)
+            if return_steps:
+                steps.append({"step": f"ocr_{psm}_cleaned", "name": "Initial Text Cleaning", "status": "completed",
+                            "original": raw_text[:100] + "..." if len(raw_text) > 100 else raw_text,
+                            "cleaned": cleaned_text[:100] + "..." if len(cleaned_text) > 100 else cleaned_text})
+            
+            if return_steps:
+                steps.append({"step": f"ocr_{psm}", "name": f"Tesseract OCR (PSM {psm})", "status": "completed", 
+                            "final_text": cleaned_text[:100] + "..." if len(cleaned_text) > 100 else cleaned_text})
+                return cleaned_text, steps
+            return cleaned_text
         except Exception as e:
+            if return_steps:
+                steps.append({"step": f"ocr_{psm}_error", "name": "OCR Error", "status": "failed", "error": str(e)})
             print(f"OCR config error: {e}")
             # Fallback to default OCR
             try:
                 text = pytesseract.image_to_string(img).strip()
                 text = self._clean_ocr_text(text)
+                if return_steps:
+                    steps.append({"step": f"ocr_{psm}_fallback", "name": "Fallback OCR", "status": "completed",
+                                "text": text[:100] + "..." if len(text) > 100 else text})
+                    return text, steps
                 return text
             except:
+                if return_steps:
+                    steps.append({"step": f"ocr_{psm}_error", "name": "OCR Failed", "status": "failed"})
+                    return "", steps
                 return ""
     
     def _clean_ocr_text(self, text: str) -> str:
@@ -309,11 +391,17 @@ class SafetyComplianceDetector:
             if random_caps > len(words) * 0.3:  # More than 30% random caps = likely gibberish
                 return False
         
-        # Check 2: Too many consecutive consonants (unlikely in English)
-        # Pattern like "preracicns" has too many consonant clusters
-        consonant_clusters = re.findall(r'[bcdfghjklmnpqrstvwxyz]{4,}', text.lower())
-        if len(consonant_clusters) > len(text) / 10:  # Too many long consonant clusters
-            return False
+        # Check 2: Too many consecutive consonants (unlikely in English) - STRICTER
+        # Pattern like "preracicns" or "crcsyell" has too many consonant clusters
+        consonant_clusters = re.findall(r'[bcdfghjklmnpqrstvwxyz]{3,}', text.lower())
+        if len(consonant_clusters) > 0:  # ANY 3+ consonant cluster is suspicious
+            # But allow common safety words that might have clusters
+            safety_words_with_clusters = ['hard', 'hat', 'hardhat', 'hard hat', 'required', 'protective']
+            text_lower = text.lower()
+            has_allowed_clusters = any(word in text_lower for word in safety_words_with_clusters)
+            if not has_allowed_clusters:
+                # If we have consonant clusters and no safety words, likely gibberish
+                return False
         
         # Check 3: Check for common safety sign words (if present, likely valid)
         safety_keywords = [
@@ -338,10 +426,19 @@ class SafetyComplianceDetector:
             if len(text) > 10 and vowels < len(text) * 0.2:  # Less than 20% vowels = likely gibberish
                 return False
         
-        # Check 6: Too many random character patterns (like "HN EXIM Wek oe Neee")
-        # Check for patterns of 2-3 letter words with random caps
-        short_random_words = sum(1 for w in words if len(w) <= 3 and w.isupper() and not w in ['NO', 'HARD', 'HAT', 'PPE', 'CDM', 'HSE'])
-        if len(words) > 0 and short_random_words > len(words) * 0.4:  # More than 40% random short caps = gibberish
+        # Check 6: Too many random character patterns (like "HN EXIM Wek oe Neee") - STRICTER
+        # Check for patterns of 2-4 letter words with random caps
+        allowed_short_words = ['NO', 'HARD', 'HAT', 'PPE', 'CDM', 'HSE', 'WARNING', 'DANGER', 'CAUTION', 'HARD', 'HAT']
+        short_random_words = sum(1 for w in words if len(w) <= 4 and w.isupper() and w not in allowed_short_words)
+        if len(words) > 0 and short_random_words > len(words) * 0.3:  # 30% threshold (was 40%) - STRICTER
+            return False
+        
+        # Check 7: Additional pattern check - words with weird mixed case (like "Wek", "Neee")
+        weird_case_words = sum(1 for w in words if len(w) > 2 and (
+            (w[0].islower() and w[1:].isupper()) or  # Like "wEK"
+            (w.isupper() and len(w) > 4 and w not in allowed_short_words)  # Long all-caps that aren't safety words
+        ))
+        if len(words) > 0 and weird_case_words > len(words) * 0.3:  # More than 30% weird case = gibberish
             return False
         
         return True

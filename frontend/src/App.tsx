@@ -18,7 +18,13 @@ interface AnalysisResult {
   compliance_score: number
   original_image: string
   annotated_image: string
-    document_provided?: boolean
+  ocr_processing_steps?: Array<{
+    step: number | string
+    name: string
+    status: string
+    [key: string]: any
+  }>
+  document_provided?: boolean
     document_id?: string
     document_name?: string
     document_requirements?: {

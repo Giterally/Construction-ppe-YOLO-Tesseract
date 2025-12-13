@@ -43,6 +43,12 @@ interface ResultsDisplayProps {
         issues_found: string[]
       }
     }
+    ocr_processing_steps?: Array<{
+      step: number | string
+      name: string
+      status: string
+      [key: string]: any
+    }>
   }
   onReset: () => void
 }
@@ -150,6 +156,65 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
           ))}
         </div>
       </details>
+
+      {/* OCR Processing Steps */}
+      {result.ocr_processing_steps && result.ocr_processing_steps.length > 0 && (
+        <details className="details-section ocr-steps">
+          <summary>OCR Processing Steps ({result.ocr_processing_steps.length} steps)</summary>
+          <div className="ocr-steps-list">
+            {result.ocr_processing_steps.map((step, index) => (
+              <div key={index} className={`ocr-step-item status-${step.status}`}>
+                <div className="ocr-step-header">
+                  <span className="ocr-step-number">{typeof step.step === 'number' ? step.step.toFixed(1) : step.step}</span>
+                  <span className="ocr-step-name">{step.name}</span>
+                  <span className={`ocr-step-status status-${step.status}`}>
+                    {step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : step.status === 'rejected' ? '✗' : '○'}
+                  </span>
+                </div>
+                {step.note && <div className="ocr-step-note">{step.note}</div>}
+                {step.method && <div className="ocr-step-method">{step.method}</div>}
+                {step.text_preview && (
+                  <div className="ocr-step-text">
+                    <strong>Text:</strong> {step.text_preview}
+                  </div>
+                )}
+                {step.is_valid !== undefined && (
+                  <div className="ocr-step-validation">
+                    <strong>Valid:</strong> {step.is_valid ? '✓ Yes' : '✗ No'}
+                  </div>
+                )}
+                {step.confidence !== undefined && (
+                  <div className="ocr-step-confidence">
+                    <strong>Confidence:</strong> {step.confidence}% {step.passed ? '✓' : '✗'}
+                  </div>
+                )}
+                {step.reason && (
+                  <div className="ocr-step-reason">
+                    <strong>Reason:</strong> {step.reason}
+                  </div>
+                )}
+                {step.results && (
+                  <div className="ocr-step-results">
+                    <strong>Results:</strong>
+                    <ul>
+                      {step.results.map((r: any, i: number) => (
+                        <li key={i}>
+                          {r.method}: {r.text} ({r.length} chars)
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {step.error && (
+                  <div className="ocr-step-error">
+                    <strong>Error:</strong> {step.error}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {/* Document Requirements Section */}
       {result.document_provided && result.document_requirements && (

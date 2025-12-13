@@ -1164,3 +1164,95 @@ footer p {
   }
 }
 
+/* OCR Processing Steps */
+.ocr-steps {
+  margin-top: calc(var(--spacing-unit) * 3);
+}
+
+.ocr-steps-list {
+  margin-top: calc(var(--spacing-unit) * 2);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing-unit) * 2);
+}
+
+.ocr-step-item {
+  border-left: 3px solid var(--color-border);
+  padding: calc(var(--spacing-unit) * 2);
+  background: #fafafa;
+  font-size: 14px;
+}
+
+.ocr-step-item.status-completed {
+  border-left-color: var(--color-success);
+}
+
+.ocr-step-item.status-failed,
+.ocr-step-item.status-rejected {
+  border-left-color: var(--color-error);
+}
+
+.ocr-step-item.status-started {
+  border-left-color: var(--color-warning);
+}
+
+.ocr-step-header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing-unit) * 2);
+  margin-bottom: calc(var(--spacing-unit) * 1);
+}
+
+.ocr-step-number {
+  font-weight: 600;
+  color: var(--color-secondary);
+  min-width: 40px;
+}
+
+.ocr-step-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.ocr-step-status {
+  font-size: 16px;
+}
+
+.ocr-step-status.status-completed {
+  color: var(--color-success);
+}
+
+.ocr-step-status.status-failed,
+.ocr-step-status.status-rejected {
+  color: var(--color-error);
+}
+
+.ocr-step-note,
+.ocr-step-method,
+.ocr-step-text,
+.ocr-step-validation,
+.ocr-step-confidence,
+.ocr-step-reason,
+.ocr-step-error {
+  margin-top: calc(var(--spacing-unit) * 1);
+  padding-left: calc(var(--spacing-unit) * 5);
+  font-size: 13px;
+  color: var(--color-secondary);
+}
+
+.ocr-step-results {
+  margin-top: calc(var(--spacing-unit) * 1);
+  padding-left: calc(var(--spacing-unit) * 5);
+  font-size: 13px;
+}
+
+.ocr-step-results ul {
+  margin-top: calc(var(--spacing-unit) * 1);
+  padding-left: calc(var(--spacing-unit) * 3);
+  list-style: disc;
+}
+
+.ocr-step-results li {
+  margin-top: calc(var(--spacing-unit) * 0.5);
+}
+
