@@ -37,25 +37,30 @@ class SafetyComplianceDetector:
         # 1. Run YOLO detection
         results = self.model(image_path, conf=0.5)
         
-        # 2. Extract person detections
+        # 2. Extract all detections (not just people)
         people_count = 0
         detections = []
+        
+        # Get class names from model (COCO dataset has 80 classes)
+        class_names = self.model.names
         
         for result in results:
             boxes = result.boxes
             for box in boxes:
                 class_id = int(box.cls[0])
                 confidence = float(box.conf[0])
+                class_name = class_names[class_id]  # Get class name (e.g., 'person', 'car', 'bus')
                 
-                # Class 0 = person in COCO dataset
-                if class_id == 0:
+                coords = box.xyxy[0].tolist()
+                detections.append({
+                    'type': class_name,
+                    'confidence': round(confidence, 2),
+                    'bbox': [round(c, 2) for c in coords]
+                })
+                
+                # Count people separately for compliance metrics
+                if class_id == 0:  # Class 0 = person in COCO dataset
                     people_count += 1
-                    coords = box.xyxy[0].tolist()
-                    detections.append({
-                        'type': 'person',
-                        'confidence': round(confidence, 2),
-                        'bbox': [round(c, 2) for c in coords]
-                    })
         
         # 3. Run Tesseract OCR with preprocessing
         signage_text = self._extract_text_with_ocr(image_path)
@@ -435,21 +440,36 @@ Cleaned text:"""
         return max(0, min(100, score))
 
 def create_annotated_image(image_path: str, detections: List[Dict], output_path: str):
-    """Draw bounding boxes on image for detected people"""
+    """Draw bounding boxes on image for all detected objects"""
     img = cv2.imread(image_path)
     
+    # Color mapping for different object types
+    # People: red, Vehicles: blue, Equipment: green, Other: yellow
+    def get_color(obj_type: str):
+        obj_lower = obj_type.lower()
+        if 'person' in obj_lower:
+            return (0, 0, 255)  # Red for people
+        elif any(v in obj_lower for v in ['car', 'bus', 'truck', 'motorcycle', 'bicycle', 'train']):
+            return (255, 0, 0)  # Blue for vehicles
+        elif any(e in obj_lower for e in ['forklift', 'crane', 'excavator', 'backhoe']):
+            return (0, 255, 0)  # Green for equipment
+        else:
+            return (0, 255, 255)  # Yellow for other objects
+    
     for detection in detections:
-        if detection['type'] == 'person':
-            bbox = detection['bbox']
-            x1, y1, x2, y2 = map(int, bbox)
-            
-            # Draw rectangle (red for people)
-            cv2.rectangle(img, (x1, y1), (x2, y2), (0, 0, 255), 3)
-            
-            # Add label
-            label = f"Person {detection['confidence']}"
-            cv2.putText(img, label, (x1, y1 - 10), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+        bbox = detection['bbox']
+        x1, y1, x2, y2 = map(int, bbox)
+        obj_type = detection['type']
+        confidence = detection['confidence']
+        color = get_color(obj_type)
+        
+        # Draw rectangle
+        cv2.rectangle(img, (x1, y1), (x2, y2), color, 3)
+        
+        # Add label with object type and confidence
+        label = f"{obj_type.capitalize()} {confidence:.2f}"
+        cv2.putText(img, label, (x1, y1 - 10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
     
     cv2.imwrite(output_path, img)
     return output_path

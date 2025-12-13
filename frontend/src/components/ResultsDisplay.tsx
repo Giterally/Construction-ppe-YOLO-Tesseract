@@ -128,7 +128,7 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
           />
         </div>
         <div className="image-container">
-          <h3>Detected Workers</h3>
+          <h3>Detected Objects</h3>
           <img
             src={`${API_URL}${result.annotated_image}`}
             alt="Annotated"
