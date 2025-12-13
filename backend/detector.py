@@ -8,16 +8,20 @@ import pytesseract
 from PIL import Image
 import cv2
 import numpy as np
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 # Configure Tesseract path for macOS Homebrew installation
 if os.path.exists('/opt/homebrew/bin/tesseract'):
     pytesseract.pytesseract.tesseract_cmd = '/opt/homebrew/bin/tesseract'
 
 class SafetyComplianceDetector:
-    def __init__(self):
-        """Initialize YOLO model - yolov8n.pt auto-downloads on first run"""
+    def __init__(self, openai_client=None):
+        """
+        Initialize YOLO model - yolov8n.pt auto-downloads on first run
+        openai_client: Optional OpenAI client for AI-powered text cleanup
+        """
         self.model = YOLO('yolov8n.pt')
+        self.openai_client = openai_client
         
     def analyze_image(self, image_path: str) -> Dict:
         """
@@ -219,7 +223,105 @@ class SafetyComplianceDetector:
         # Remove leading/trailing whitespace
         cleaned = cleaned.strip()
         
+        # Use AI to further clean and segment if available
+        if cleaned and self.openai_client:
+            cleaned = self._ai_cleanup_text(cleaned)
+        
         return cleaned
+    
+    def _ai_cleanup_text(self, text: str) -> str:
+        """
+        Use OpenAI to clean up OCR text, fix errors, and segment into readable sections
+        """
+        if not text or not self.openai_client:
+            return text
+        
+        try:
+            prompt = f"""You are cleaning up OCR text from a construction safety sign. 
+
+Raw OCR text: "{text}"
+
+Tasks:
+1. Fix OCR character errors (e.g., "Dangerr" → "Danger", "Scaffoldingling" → "Scaffolding")
+2. Add proper spacing between words that got merged (e.g., "Dangeroussite" → "Dangerous site")
+3. Segment different parts of the sign with " | " separator
+4. Capitalize appropriately for safety signs
+5. Remove artifacts and fix punctuation
+
+Return ONLY the cleaned, segmented text. Use " | " to separate different sections/phrases.
+Keep it concise and accurate.
+
+Examples:
+- "a Dangerr . AN Scaffoldingling, incomplete" → "Danger | Scaffolding incomplete"
+- "WARNING Dangeroussite Nochildrenallowed" → "WARNING | Dangerous site | No children allowed"
+
+Cleaned text:"""
+
+            response = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",  # Use cheaper model for text cleanup
+                messages=[
+                    {"role": "system", "content": "You are a text cleaning expert specializing in OCR error correction for safety signs."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.1,  # Low temperature for consistent results
+                max_tokens=200
+            )
+            
+            cleaned_text = response.choices[0].message.content.strip()
+            # Remove quotes if AI wrapped the response
+            cleaned_text = cleaned_text.strip('"\'')
+            return cleaned_text
+            
+        except Exception as e:
+            print(f"AI text cleanup error: {e}")
+            # Fallback to rule-based cleanup
+            return self._rule_based_segmentation(text)
+    
+    def _rule_based_segmentation(self, text: str) -> str:
+        """
+        Rule-based text segmentation when AI is not available
+        """
+        if not text:
+            return text
+        
+        # Common safety sign keywords that should be separated
+        keywords = [
+            'WARNING', 'DANGER', 'CAUTION', 'NOTICE',
+            'HARD HAT', 'PROTECTIVE FOOTWEAR', 'HIGH VISIBILITY',
+            'NO CHILDREN', 'NO ADMITTANCE', 'AUTHORIZED PERSONNEL',
+            'SCAFFOLDING', 'INCOMPLETE', 'COMPLETE'
+        ]
+        
+        # Add spaces before capital letters (for merged words)
+        text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+        
+        # Fix common merged words
+        fixes = {
+            'Dangeroussite': 'Dangerous site',
+            'Nochildrenallowed': 'No children allowed',
+            'Noadmittancefor': 'No admittance for',
+            'unauthorisedpersonnel': 'unauthorised personnel',
+            'Thisisahard': 'This is a hard',
+            'hatarea': 'hat area',
+            'Protectivefootwear': 'Protective footwear',
+            'mustbeworn': 'must be worn',
+            'Highvisibility': 'High visibility',
+            'Egjacketsmustbeworn': 'e.g. jackets must be worn',
+            'Scaffoldingling': 'Scaffolding',
+            'Dangerr': 'Danger',
+        }
+        
+        for wrong, correct in fixes.items():
+            text = text.replace(wrong, correct)
+        
+        # Add separators before common section markers
+        text = re.sub(r'\s+(WARNING|DANGER|CAUTION|NOTICE|HARD HAT|PROTECTIVE|HIGH VISIBILITY|NO CHILDREN|NO ADMITTANCE|SCAFFOLDING)', r' | \1', text, flags=re.IGNORECASE)
+        
+        # Clean up multiple separators
+        text = re.sub(r'\s*\|\s*\|\s*', ' | ', text)
+        text = re.sub(r'\s+', ' ', text)
+        
+        return text.strip()
     
     def _check_compliance(self, people_count: int, signage_text: str) -> List[str]:
         """Check for compliance violations based on signage and detections"""
