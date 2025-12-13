@@ -1,8 +1,9 @@
 // API Configuration
-const getApiUrl = () => {
+const getApiUrl = (): string => {
   // Use Vercel environment variable in production, localhost in development
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL
+  const envApiUrl = (import.meta as any).env?.VITE_API_URL
+  if (envApiUrl) {
+    return envApiUrl as string
   }
   
   // Default to localhost for local development
