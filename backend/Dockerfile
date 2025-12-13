@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxrender1 \
     libgomp1 \
+    libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -16,6 +17,8 @@ COPY requirements.txt .
 # Uninstall opencv-python if present, then install opencv-python-headless
 RUN pip uninstall -y opencv-python opencv-contrib-python || true
 RUN pip install --no-cache-dir -r requirements.txt
+# Force reinstall opencv-python-headless after ultralytics (in case it pulled in opencv-python)
+RUN pip install --force-reinstall --no-deps opencv-python-headless==4.8.1.78 || true
 
 # Copy application code (.dockerignore will exclude large files)
 COPY . .
