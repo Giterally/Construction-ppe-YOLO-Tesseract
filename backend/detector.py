@@ -254,17 +254,22 @@ Raw OCR text: "{text}"
 
 Tasks:
 1. Fix OCR character errors (e.g., "Dangerr" → "Danger", "Scaffoldingling" → "Scaffolding")
-2. Add proper spacing between words that got merged (e.g., "Dangeroussite" → "Dangerous site")
+2. Add proper spacing between words that got merged (e.g., "Dangeroussite" → "Dangerous site", "Egjacketsmust" → "e.g. jackets must")
 3. Segment different parts of the sign with " | " separator
 4. Capitalize appropriately for safety signs
-5. Remove artifacts and fix punctuation
+5. Remove ALL artifacts:
+   - Remove single letters that are OCR errors (like "a", ". AN", ". A")
+   - Remove punctuation-only segments
+   - Remove incomplete words
+6. Only return complete, real words - no fragments or artifacts
+7. Fix common patterns: "Eg" → "e.g.", "mustbeworn" → "must be worn"
 
-Return ONLY the cleaned, segmented text. Use " | " to separate different sections/phrases.
-Keep it concise and accurate.
+Return ONLY the cleaned, segmented text with real words. Use " | " to separate sections.
+Be aggressive about removing artifacts - only keep meaningful text.
 
 Examples:
 - "a Dangerr . AN Scaffoldingling, incomplete" → "Danger | Scaffolding incomplete"
-- "WARNING Dangeroussite Nochildrenallowed" → "WARNING | Dangerous site | No children allowed"
+- "WARNING Dangeroussite Nochildrenallowed Egjacketsmust" → "WARNING | Dangerous site | No children allowed | e.g. jackets must"
 
 Cleaned text:"""
 
@@ -281,6 +286,8 @@ Cleaned text:"""
             cleaned_text = response.choices[0].message.content.strip()
             # Remove quotes if AI wrapped the response
             cleaned_text = cleaned_text.strip('"\'')
+            # Apply artifact removal as final step
+            cleaned_text = self._remove_artifacts(cleaned_text)
             return cleaned_text
             
         except Exception as e:
@@ -318,8 +325,13 @@ Cleaned text:"""
             'mustbeworn': 'must be worn',
             'Highvisibility': 'High visibility',
             'Egjacketsmustbeworn': 'e.g. jackets must be worn',
+            'Egjacketsmust': 'e.g. jackets must',
+            'Egjackets': 'e.g. jackets',
             'Scaffoldingling': 'Scaffolding',
             'Dangerr': 'Danger',
+            # Fix "Eg" patterns
+            'Eg ': 'e.g. ',
+            'Eg': 'e.g.',
         }
         
         for wrong, correct in fixes.items():
@@ -332,7 +344,57 @@ Cleaned text:"""
         text = re.sub(r'\s*\|\s*\|\s*', ' | ', text)
         text = re.sub(r'\s+', ' ', text)
         
+        # Post-processing: Remove artifacts
+        text = self._remove_artifacts(text)
+        
         return text.strip()
+    
+    def _remove_artifacts(self, text: str) -> str:
+        """
+        Remove OCR artifacts like single letters, punctuation-only segments, etc.
+        """
+        if not text:
+            return text
+        
+        # Split by separator to process each segment
+        segments = text.split(' | ')
+        cleaned_segments = []
+        
+        for segment in segments:
+            segment = segment.strip()
+            if not segment:
+                continue
+            
+            # Remove single-letter words at start/end (likely OCR artifacts)
+            # But keep "I" and "A" if they're standalone words
+            words = segment.split()
+            if len(words) > 0:
+                # Remove single-letter artifacts at start
+                while len(words) > 0 and len(words[0]) == 1 and words[0].lower() not in ['i', 'a']:
+                    words.pop(0)
+                # Remove single-letter artifacts at end
+                while len(words) > 0 and len(words[-1]) == 1 and words[-1].lower() not in ['i', 'a']:
+                    words.pop()
+            
+            # Remove punctuation-only segments
+            segment_clean = ' '.join(words).strip()
+            if segment_clean and not re.match(r'^[.,;:!?\-\[\]()]+$', segment_clean):
+                # Remove patterns like ". AN", ". A", etc.
+                segment_clean = re.sub(r'^\.\s*[A-Z]{1,2}\s*$', '', segment_clean, flags=re.IGNORECASE)
+                segment_clean = segment_clean.strip()
+                
+                if segment_clean and len(segment_clean) > 1:  # Keep segments with actual content
+                    cleaned_segments.append(segment_clean)
+        
+        # Rejoin with separators
+        result = ' | '.join(cleaned_segments)
+        
+        # Final cleanup: remove any remaining single-letter artifacts
+        result = re.sub(r'\b[a-zA-Z]\b(?!\s*\|)', '', result)  # Remove single letters not before separator
+        result = re.sub(r'\s+', ' ', result)
+        result = re.sub(r'\s*\|\s*\|', ' | ', result)
+        
+        return result.strip()
     
     def _check_compliance(self, people_count: int, signage_text: str) -> List[str]:
         """Check for compliance violations based on signage and detections"""
