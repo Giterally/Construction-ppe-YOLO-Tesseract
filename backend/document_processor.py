@@ -343,7 +343,20 @@ class DocumentProcessor:
         """Initialize with OpenAI API key"""
         api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
         if api_key:
-            self.client = OpenAI(api_key=api_key)
+            try:
+                # Initialize OpenAI client without proxy to avoid Railway proxy issues
+                self.client = OpenAI(
+                    api_key=api_key,
+                    http_client=None  # Let OpenAI handle HTTP client internally
+                )
+            except Exception as e:
+                print(f"⚠️  OpenAI client initialization failed: {e}")
+                # Try with minimal config
+                try:
+                    self.client = OpenAI(api_key=api_key)
+                except Exception as e2:
+                    print(f"⚠️  OpenAI client initialization failed (fallback): {e2}")
+                    self.client = None
         else:
             self.client = None
             print("⚠️  OpenAI API key not found. LLM features will use fallback methods.")
