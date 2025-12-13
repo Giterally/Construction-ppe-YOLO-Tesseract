@@ -3,8 +3,12 @@ FROM python:3.11-slim
 # Install system dependencies for Tesseract and OpenCV
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
-    libgl1 \
+    libgl1-mesa-glx \
     libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -17,7 +21,12 @@ COPY . .
 # Create uploads directory
 RUN mkdir -p uploads
 
-EXPOSE 5000
+# Create uploads directory
+RUN mkdir -p uploads
 
-CMD ["python", "app.py"]
+# Use PORT environment variable (Railway provides this)
+ENV PORT=5000
+EXPOSE $PORT
+
+CMD python app.py
 
