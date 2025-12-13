@@ -52,9 +52,19 @@ openai_api_key = os.getenv('OPENAI_API_KEY')
 if openai_api_key:
     try:
         from openai import OpenAI
-        openai_client = OpenAI(api_key=openai_api_key)
+        # Initialize without proxy to avoid Railway proxy issues
+        openai_client = OpenAI(
+            api_key=openai_api_key,
+            http_client=None  # Let OpenAI handle HTTP client internally
+        )
     except Exception as e:
         print(f"⚠️  OpenAI client initialization failed for detector: {e}")
+        # Try with minimal config
+        try:
+            openai_client = OpenAI(api_key=openai_api_key)
+        except Exception as e2:
+            print(f"⚠️  OpenAI client initialization failed (fallback): {e2}")
+            openai_client = None
 
 # Initialize detector with optional OpenAI client for text cleanup
 detector = SafetyComplianceDetector(openai_client=openai_client)
