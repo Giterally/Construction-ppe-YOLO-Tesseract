@@ -328,7 +328,8 @@ def analyze_with_document():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5001))
     print("🚀 Starting Safety PPE Compliance Checker API...")
-    print("📍 Server running on http://localhost:5001")
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    print(f"📍 Server running on port {port}")
+    app.run(host='0.0.0.0', port=port, debug=False)
 
