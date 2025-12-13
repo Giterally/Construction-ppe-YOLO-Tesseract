@@ -21,10 +21,22 @@ supabase: Client = None
 
 if supabase_url and supabase_key:
     try:
-        supabase = create_client(supabase_url, supabase_key)
+        # Create client without proxy to avoid compatibility issues
+        supabase = create_client(
+            supabase_url, 
+            supabase_key,
+            options={"db": {"schema": "public"}}
+        )
         print("✅ Connected to Supabase")
     except Exception as e:
         print(f"⚠️  Supabase connection failed: {e}")
+        # Try without options if that fails
+        try:
+            supabase = create_client(supabase_url, supabase_key)
+            print("✅ Connected to Supabase (fallback method)")
+        except Exception as e2:
+            print(f"⚠️  Supabase connection failed (fallback): {e2}")
+            supabase = None
 else:
     print("⚠️  Supabase credentials not found. Results will not be saved to database.")
 
