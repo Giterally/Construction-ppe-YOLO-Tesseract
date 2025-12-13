@@ -1,4 +1,5 @@
 import os
+import re
 # Set environment variable for PyTorch 2.6+ compatibility
 os.environ['TORCH_SERIALIZATION_SAFE_GLOBALS'] = '1'
 
@@ -188,7 +189,6 @@ class SafetyComplianceDetector:
             cleaned = cleaned.replace(old, new)
         
         # Remove standalone punctuation artifacts
-        import re
         # Remove brackets and their contents if they're artifacts
         cleaned = re.sub(r'\[[a-z]\]', '', cleaned, flags=re.IGNORECASE)
         # Remove trailing punctuation that's likely OCR error
