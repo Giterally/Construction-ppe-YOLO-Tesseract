@@ -1,0 +1,71 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Python package files
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Environment variables
+.env
+*.env.local
+
+# Uploads and user-generated files
+uploads/*
+!uploads/.gitkeep
+
+# Large ML model files (will download automatically)
+*.pt
+*.pth
+*.onnx
+*.h5
+*.pb
+yolov8n.pt
+yolov8s.pt
+yolov8m.pt
+yolov8l.pt
+yolov8x.pt
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Git
+.git/
+.gitignore
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Documentation
+*.md
+docs/
+
+# Docker files themselves
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
