@@ -1,0 +1,73 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+*.log
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment variables
+.env
+backend/.env
+*.env.local
+*.env.*.local
+
+# Uploads and generated files
+backend/uploads/*
+!backend/uploads/.gitkeep
+image_uploads/*
+*.jpg
+*.jpeg
+*.png
+*.webp
+*_annotated.*
+
+# ML Models (large files - uncomment if you want to exclude)
+# *.pt
+# *.pth
+# *.onnx
+# yolov8n.pt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
