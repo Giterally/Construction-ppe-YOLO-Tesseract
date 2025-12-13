@@ -52,14 +52,8 @@ class SafetyComplianceDetector:
                         'bbox': [round(c, 2) for c in coords]
                     })
         
-        # 3. Run Tesseract OCR
-        img = Image.open(image_path)
-        try:
-            signage_text = pytesseract.image_to_string(img).strip()
-        except Exception as e:
-            # If Tesseract is not installed, return empty string
-            print(f"Warning: Tesseract OCR not available: {e}")
-            signage_text = ""
+        # 3. Run Tesseract OCR with preprocessing
+        signage_text = self._extract_text_with_ocr(image_path)
         
         # 4. Compliance analysis
         violations = self._check_compliance(people_count, signage_text)
@@ -72,6 +66,90 @@ class SafetyComplianceDetector:
             'detections': detections,
             'compliance_score': compliance_score
         }
+    
+    def _extract_text_with_ocr(self, image_path: str) -> str:
+        """
+        Extract text from image using Tesseract OCR with proper preprocessing
+        Tries multiple preprocessing methods and OCR configurations for best results
+        """
+        try:
+            # Load image with OpenCV for preprocessing
+            img_cv = cv2.imread(image_path)
+            if img_cv is None:
+                # Fallback to PIL if OpenCV fails
+                img = Image.open(image_path)
+                return self._ocr_with_config(img)
+            
+            # Method 1: Grayscale + threshold (best for high contrast signs)
+            gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+            
+            # Apply adaptive thresholding for better text extraction
+            thresh = cv2.adaptiveThreshold(
+                gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                cv2.THRESH_BINARY, 11, 2
+            )
+            
+            # Convert back to PIL Image for Tesseract
+            img_processed = Image.fromarray(thresh)
+            text1 = self._ocr_with_config(img_processed, psm=6)  # Uniform block
+            
+            # Method 2: Grayscale + Otsu thresholding
+            _, thresh2 = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            img_processed2 = Image.fromarray(thresh2)
+            text2 = self._ocr_with_config(img_processed2, psm=7)  # Single text line
+            
+            # Method 3: Enhanced contrast + grayscale
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+            enhanced = clahe.apply(gray)
+            _, thresh3 = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            img_processed3 = Image.fromarray(thresh3)
+            text3 = self._ocr_with_config(img_processed3, psm=6)
+            
+            # Method 4: Original image (fallback)
+            img_original = Image.open(image_path)
+            text4 = self._ocr_with_config(img_original, psm=6)
+            
+            # Return the longest non-empty result (most likely to be correct)
+            results = [text1, text2, text3, text4]
+            non_empty = [t for t in results if t.strip()]
+            
+            if non_empty:
+                # Return the result with most characters (usually most accurate)
+                return max(non_empty, key=len).strip()
+            else:
+                return ""
+                
+        except Exception as e:
+            print(f"OCR preprocessing error: {e}")
+            # Fallback to simple OCR
+            try:
+                img = Image.open(image_path)
+                return self._ocr_with_config(img)
+            except Exception as e2:
+                print(f"Warning: Tesseract OCR not available: {e2}")
+                return ""
+    
+    def _ocr_with_config(self, img: Image.Image, psm: int = 6) -> str:
+        """
+        Run Tesseract OCR with specific configuration
+        PSM modes:
+        6 = Assume a single uniform block of text
+        7 = Treat the image as a single text line
+        8 = Treat the image as a single word
+        """
+        try:
+            # Tesseract configuration for signs and text
+            custom_config = f'--psm {psm} --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?;:()[]- '
+            
+            text = pytesseract.image_to_string(img, config=custom_config).strip()
+            return text
+        except Exception as e:
+            print(f"OCR config error: {e}")
+            # Fallback to default OCR
+            try:
+                return pytesseract.image_to_string(img).strip()
+            except:
+                return ""
     
     def _check_compliance(self, people_count: int, signage_text: str) -> List[str]:
         """Check for compliance violations based on signage and detections"""
