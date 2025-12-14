@@ -210,15 +210,50 @@ def delete_all_analyses():
         
         count = count_response.count if hasattr(count_response, 'count') else 0
         
-        # Delete all analyses (Supabase allows delete without filter to delete all)
-        response = supabase.table('safety_analyses')\
-            .delete()\
-            .execute()
+        # Try to delete all using a filter that matches all records
+        # Use neq with empty string to match all UUIDs (since UUIDs are never empty strings)
+        # If that doesn't work, fall back to fetching all IDs and deleting them
+        try:
+            # Attempt 1: Use a filter that should match all records
+            response = supabase.table('safety_analyses')\
+                .delete()\
+                .neq('id', '00000000-0000-0000-0000-000000000000')\
+                .execute()
+            
+            deleted_count = len(response.data) if response.data else 0
+        except Exception as e1:
+            print(f"First delete attempt failed: {e1}")
+            # Attempt 2: Fetch all IDs and delete them individually
+            try:
+                all_analyses = supabase.table('safety_analyses')\
+                    .select('id')\
+                    .execute()
+                
+                deleted_count = 0
+                if all_analyses.data:
+                    for analysis in all_analyses.data:
+                        try:
+                            supabase.table('safety_analyses')\
+                                .delete()\
+                                .eq('id', analysis['id'])\
+                                .execute()
+                            deleted_count += 1
+                        except Exception as e2:
+                            print(f"Error deleting analysis {analysis['id']}: {e2}")
+                            continue
+            except Exception as e2:
+                print(f"Second delete attempt failed: {e2}")
+                raise Exception(f"Failed to delete analyses: {e1}, {e2}")
         
-        return jsonify({'success': True, 'message': 'All analyses deleted successfully', 'count': count})
+        return jsonify({
+            'success': True, 
+            'message': 'All analyses deleted successfully', 
+            'count': count,
+            'deleted': deleted_count
+        })
     except Exception as e:
         print(f"Error deleting all analyses: {e}")
-        return jsonify({'error': 'Failed to delete all analyses'}), 500
+        return jsonify({'error': f'Failed to delete all analyses: {str(e)}'}), 500
 
 @app.route('/api/documents', methods=['GET'])
 def get_documents():
