@@ -314,15 +314,23 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
       {/* Cross-Check Results */}
       {result.document_provided && result.cross_check && (
         <div className="cross-check-section">
-          <h3>Document Cross-Check Analysis {result.document_name && `(${result.document_name} selected from dropdown; CDM 2015 and HSE Guidelines automatically included as general UK construction regulations)`}</h3>
+          <h3>
+            Document Cross-Check Analysis
+            {result.document_name && (
+              <span style={{fontWeight: 'normal', fontSize: '0.9em'}}>
+                <br />
+                ({result.document_name} selected from dropdown; CDM 2015 and HSE Guidelines automatically included as general UK construction regulations)
+              </span>
+            )}
+          </h3>
 
           {/* Regulatory Compliance Status */}
           <div className="regulatory-status">
-            <div className={`status-badge ${result.cross_check.regulatory_checks.cdm_2015_compliant ? 'compliant' : 'non-compliant'}`}>
-              {result.cross_check.regulatory_checks.cdm_2015_compliant ? '✓' : '✗'} CDM 2015
+            <div className="status-badge" style={{background: '#f0f0f0', color: '#666', border: '1px solid #ddd'}}>
+              CDM 2015
             </div>
-            <div className={`status-badge ${result.cross_check.regulatory_checks.hse_compliant ? 'compliant' : 'non-compliant'}`}>
-              {result.cross_check.regulatory_checks.hse_compliant ? '✓' : '✗'} HSE Guidelines
+            <div className="status-badge" style={{background: '#f0f0f0', color: '#666', border: '1px solid #ddd'}}>
+              HSE Guidelines
             </div>
           </div>
 
