@@ -2,7 +2,12 @@ export default function Header() {
   return (
     <header className="header">
       <div className="container">
-        <h1>Construction H&S Compliance Analyzer - Computer Vision & Document Cross-Check</h1>
+        <h1>
+          Construction H&S Compliance Analyzer
+          <span style={{display: 'block', fontSize: '0.6em', fontWeight: 'normal', marginTop: '0.5em'}}>
+            Computer Vision & Document Cross-Check
+          </span>
+        </h1>
         <p className="subtitle">
           Automated detection of workers and safety signage using computer vision
         </p>
