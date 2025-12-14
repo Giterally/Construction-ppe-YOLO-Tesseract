@@ -110,23 +110,26 @@ class SafetyComplianceDetector:
         steps = []
         base_path = os.path.dirname(image_path) if unique_id else None
         file_ext = os.path.splitext(image_path)[1] if unique_id else None
-        try:
-            # Load image with OpenCV for preprocessing
-            img_cv = cv2.imread(image_path)
-            steps.append({"step": 1, "name": "Load Image", "status": "started"})
-            if img_cv is None:
-                steps.append({"step": 1, "name": "Load Image", "status": "failed", "note": "OpenCV failed, using PIL fallback"})
-                # Fallback to PIL if OpenCV fails
-                img = Image.open(image_path)
-                text, sub_steps = self._ocr_with_config(img, return_steps=True)
-                steps.extend(sub_steps)
-                return text, steps
-            steps.append({"step": 1, "name": "Original Image", "status": "completed", 
-                         "image": f"/api/images/{unique_id}_ocr_original{file_ext}" if unique_id else None})
-            
-            # Save original for display (with _ocr_ prefix to avoid conflicts)
-            if unique_id:
+        
+        # Load image with OpenCV for preprocessing
+        img_cv = cv2.imread(image_path)
+        if img_cv is None:
+            # Fallback to PIL if OpenCV fails
+            img = Image.open(image_path)
+            text, sub_steps = self._ocr_with_config(img, return_steps=True)
+            steps.extend(sub_steps)
+            return text, steps
+        
+        # Save original for display (with _ocr_ prefix to avoid conflicts)
+        if unique_id:
+            try:
                 cv2.imwrite(os.path.join(base_path, f"{unique_id}_ocr_original{file_ext}"), img_cv)
+                steps.append({"step": 1, "name": "Original Image", "status": "completed", 
+                             "image": f"/api/images/{unique_id}_ocr_original{file_ext}"})
+            except Exception as e:
+                print(f"Warning: Could not save original image: {e}")
+        
+        try:
             
             # Method 1: Grayscale + threshold (best for high contrast signs)
             gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
@@ -151,30 +154,69 @@ class SafetyComplianceDetector:
             
             # Get OCR with bounding boxes for visualization
             img_processed = Image.fromarray(thresh)
-            text1, highlighted_img1 = self._ocr_with_visualization(img_processed, img_cv, psm=6)
+            result1 = self._ocr_with_visualization(img_processed, img_cv, psm=6, return_steps=True)
+            
+            # Extract text, steps, and highlighted image from the result
+            if isinstance(result1, tuple) and isinstance(result1[0], tuple):
+                # Return format: ((text, steps), highlighted_img)
+                (text1, ocr_steps), highlighted_img1 = result1
+                steps.extend(ocr_steps)
+            else:
+                # Fallback: just text and image
+                text1, highlighted_img1 = result1
             
             # Save highlighted image
             if unique_id and highlighted_img1 is not None:
-                highlight_path = os.path.join(base_path, f"{unique_id}_ocr_highlighted{file_ext}")
-                cv2.imwrite(highlight_path, highlighted_img1)
-                steps.append({"step": 3, "name": "Text Detection", "status": "completed",
-                            "image": f"/api/images/{unique_id}_ocr_threshold{file_ext}",
-                            "highlighted_image": f"/api/images/{unique_id}_ocr_highlighted{file_ext}",
-                            "detected_text": text1[:100] + "..." if len(text1) > 100 else text1})
+                try:
+                    highlight_path = os.path.join(base_path, f"{unique_id}_ocr_highlighted{file_ext}")
+                    cv2.imwrite(highlight_path, highlighted_img1)
+                    steps.append({"step": 3, "name": "Text Detection", "status": "completed",
+                                "image": f"/api/images/{unique_id}_ocr_threshold{file_ext}",
+                                "highlighted_image": f"/api/images/{unique_id}_ocr_highlighted{file_ext}",
+                                "detected_text": text1})
+                except Exception as e:
+                    print(f"Warning: Could not save highlighted image: {e}")
+                    steps.append({"step": 3, "name": "Text Detection", "status": "completed",
+                                "image": f"/api/images/{unique_id}_ocr_threshold{file_ext}",
+                                "detected_text": text1})
             
             # Try other methods but don't add to visual steps
-            _, thresh2 = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            img_processed2 = Image.fromarray(thresh2)
-            text2, _ = self._ocr_with_visualization(img_processed2, img_cv, psm=7)
+            try:
+                _, thresh2 = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                img_processed2 = Image.fromarray(thresh2)
+                result2 = self._ocr_with_visualization(img_processed2, img_cv, psm=7)
+                if isinstance(result2, tuple) and isinstance(result2[0], tuple):
+                    text2, _ = result2[0][0], result2[1]
+                else:
+                    text2, _ = result2
+            except Exception as e:
+                print(f"Warning: Method 2 failed: {e}")
+                text2 = ""
             
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-            enhanced = clahe.apply(gray)
-            _, thresh3 = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-            img_processed3 = Image.fromarray(thresh3)
-            text3, _ = self._ocr_with_visualization(img_processed3, img_cv, psm=6)
+            try:
+                clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+                enhanced = clahe.apply(gray)
+                _, thresh3 = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                img_processed3 = Image.fromarray(thresh3)
+                result3 = self._ocr_with_visualization(img_processed3, img_cv, psm=6)
+                if isinstance(result3, tuple) and isinstance(result3[0], tuple):
+                    text3, _ = result3[0][0], result3[1]
+                else:
+                    text3, _ = result3
+            except Exception as e:
+                print(f"Warning: Method 3 failed: {e}")
+                text3 = ""
             
-            img_original = Image.open(image_path)
-            text4, _ = self._ocr_with_visualization(img_original, img_cv, psm=6)
+            try:
+                img_original = Image.open(image_path)
+                result4 = self._ocr_with_visualization(img_original, img_cv, psm=6)
+                if isinstance(result4, tuple) and isinstance(result4[0], tuple):
+                    text4, _ = result4[0][0], result4[1]
+                else:
+                    text4, _ = result4
+            except Exception as e:
+                print(f"Warning: Method 4 failed: {e}")
+                text4 = ""
             
             # Collect all results with validation
             results = [
@@ -220,7 +262,7 @@ class SafetyComplianceDetector:
                 return "", steps
                 
         except Exception as e:
-            steps.append({"step": "error", "name": "OCR Processing Error", "status": "failed", "error": str(e)})
+            # Only show error if it's a critical failure
             print(f"OCR preprocessing error: {e}")
             # Fallback to simple OCR
             try:
@@ -229,18 +271,32 @@ class SafetyComplianceDetector:
                 steps.extend(sub_steps)
                 return text, steps
             except Exception as e2:
-                steps.append({"step": "error", "name": "Fallback OCR Error", "status": "failed", "error": str(e2)})
+                # Only add error step if fallback also fails
+                steps.append({"step": "error", "name": "OCR Processing Error", "status": "failed", "error": str(e2)})
                 print(f"Warning: Tesseract OCR not available: {e2}")
                 return "", steps
     
-    def _ocr_with_visualization(self, img: Image.Image, original_img: np.ndarray, psm: int = 6) -> tuple[str, np.ndarray]:
+    def _ocr_with_visualization(self, img: Image.Image, original_img: np.ndarray, psm: int = 6, return_steps: bool = False) -> tuple[str, np.ndarray] | tuple[tuple[str, List[Dict]], np.ndarray]:
         """
         Run OCR and return text + highlighted image showing detected characters
+        If return_steps=True, also returns OCR processing steps with full text
         """
+        steps = []
         try:
             custom_config = f'--psm {psm} --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?;:()[]- '
-            text = pytesseract.image_to_string(img, config=custom_config).strip()
-            text = self._clean_ocr_text(text)
+            
+            # Get raw OCR text
+            raw_text = pytesseract.image_to_string(img, config=custom_config).strip()
+            if return_steps:
+                steps.append({"step": "ocr_raw", "name": "Raw OCR Output", "status": "completed", 
+                            "text": raw_text, "length": len(raw_text)})
+            
+            # Clean up OCR errors
+            cleaned_text = self._clean_ocr_text(raw_text)
+            if return_steps:
+                steps.append({"step": "ocr_cleaned", "name": "Initial Text Cleaning", "status": "completed",
+                            "original": raw_text,
+                            "cleaned": cleaned_text})
             
             # Get bounding boxes for visualization
             try:
@@ -253,10 +309,18 @@ class SafetyComplianceDetector:
                         (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
                         cv2.rectangle(highlighted, (x, y), (x + w, y + h), (0, 255, 0), 2)
                 
-                return text, highlighted
-            except:
-                return text, None
-        except:
+                if return_steps:
+                    return (cleaned_text, steps), highlighted
+                return cleaned_text, highlighted
+            except Exception as e:
+                print(f"Warning: Could not create highlighted image: {e}")
+                if return_steps:
+                    return (cleaned_text, steps), None
+                return cleaned_text, None
+        except Exception as e:
+            print(f"OCR visualization error: {e}")
+            if return_steps:
+                return (("", []), None)
             return "", None
     
     def _ocr_with_config(self, img: Image.Image, psm: int = 6, return_steps: bool = False, method_name: str = "") -> str | tuple[str, List[Dict]]:
@@ -278,14 +342,14 @@ class SafetyComplianceDetector:
             raw_text = pytesseract.image_to_string(img, config=custom_config).strip()
             if return_steps:
                 steps.append({"step": f"ocr_{psm}_raw", "name": "Raw OCR Output", "status": "completed", 
-                            "text": raw_text[:100] + "..." if len(raw_text) > 100 else raw_text, "length": len(raw_text)})
+                            "text": raw_text, "length": len(raw_text)})
             
             # Clean up OCR errors
             cleaned_text = self._clean_ocr_text(raw_text)
             if return_steps:
                 steps.append({"step": f"ocr_{psm}_cleaned", "name": "Initial Text Cleaning", "status": "completed",
-                            "original": raw_text[:100] + "..." if len(raw_text) > 100 else raw_text,
-                            "cleaned": cleaned_text[:100] + "..." if len(cleaned_text) > 100 else cleaned_text})
+                            "original": raw_text,
+                            "cleaned": cleaned_text})
             
             if return_steps:
                 steps.append({"step": f"ocr_{psm}", "name": f"Tesseract OCR (PSM {psm})", "status": "completed", 
