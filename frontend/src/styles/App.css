@@ -105,10 +105,11 @@ body {
 
 .header .quote cite {
   display: block;
-  font-size: 14px;
+  font-size: 18px;
   font-style: normal;
   color: var(--color-secondary);
   margin-top: calc(var(--spacing-unit) * 2);
+  font-weight: 500;
 }
 
 /* Main Content */
