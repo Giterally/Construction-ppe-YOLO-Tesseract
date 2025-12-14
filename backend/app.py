@@ -137,30 +137,6 @@ def get_image(filename):
     except Exception as e:
         return jsonify({'error': 'Image not found'}), 404
 
-@app.route('/api/analyses', methods=['GET'])
-def get_analyses():
-    """Get past safety compliance analyses"""
-    if not supabase:
-        return jsonify({'error': 'Supabase not configured'}), 503
-    
-    try:
-        limit = request.args.get('limit', 20, type=int)
-        offset = request.args.get('offset', 0, type=int)
-        
-        response = supabase.table('safety_analyses')\
-            .select('*')\
-            .order('created_at', desc=True)\
-            .limit(limit)\
-            .offset(offset)\
-            .execute()
-        
-        return jsonify({
-            'analyses': response.data,
-            'count': len(response.data)
-        })
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @app.route('/api/analyses/all', methods=['DELETE'])
 def delete_all_analyses():
     """Delete all safety compliance analyses"""
