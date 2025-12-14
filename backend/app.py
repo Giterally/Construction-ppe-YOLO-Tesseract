@@ -161,7 +161,7 @@ def get_analyses():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/analyses', methods=['DELETE'])
+@app.route('/api/analyses/all', methods=['DELETE'])
 def delete_all_analyses():
     """Delete all safety compliance analyses"""
     if not supabase:
@@ -175,40 +175,24 @@ def delete_all_analyses():
         
         count = count_response.count if hasattr(count_response, 'count') else 0
         
-        # Try to delete all using a filter that matches all records
-        # Use neq with empty string to match all UUIDs (since UUIDs are never empty strings)
-        # If that doesn't work, fall back to fetching all IDs and deleting them
-        try:
-            # Attempt 1: Use a filter that should match all records
-            response = supabase.table('safety_analyses')\
-                .delete()\
-                .neq('id', '00000000-0000-0000-0000-000000000000')\
-                .execute()
-            
-            deleted_count = len(response.data) if response.data else 0
-        except Exception as e1:
-            print(f"First delete attempt failed: {e1}")
-            # Attempt 2: Fetch all IDs and delete them individually
-            try:
-                all_analyses = supabase.table('safety_analyses')\
-                    .select('id')\
-                    .execute()
-                
-                deleted_count = 0
-                if all_analyses.data:
-                    for analysis in all_analyses.data:
-                        try:
-                            supabase.table('safety_analyses')\
-                                .delete()\
-                                .eq('id', analysis['id'])\
-                                .execute()
-                            deleted_count += 1
-                        except Exception as e2:
-                            print(f"Error deleting analysis {analysis['id']}: {e2}")
-                            continue
-            except Exception as e2:
-                print(f"Second delete attempt failed: {e2}")
-                raise Exception(f"Failed to delete analyses: {e1}, {e2}")
+        # Delete all analyses by fetching all IDs and deleting them individually
+        # This works better with RLS policies
+        all_analyses = supabase.table('safety_analyses')\
+            .select('id')\
+            .execute()
+        
+        deleted_count = 0
+        if all_analyses.data:
+            for analysis in all_analyses.data:
+                try:
+                    supabase.table('safety_analyses')\
+                        .delete()\
+                        .eq('id', analysis['id'])\
+                        .execute()
+                    deleted_count += 1
+                except Exception as e2:
+                    print(f"Error deleting analysis {analysis['id']}: {e2}")
+                    continue
         
         return jsonify({
             'success': True, 
@@ -218,6 +202,8 @@ def delete_all_analyses():
         })
     except Exception as e:
         print(f"Error deleting all analyses: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f'Failed to delete all analyses: {str(e)}'}), 500
 
 @app.route('/api/analyses/<analysis_id>', methods=['GET'])
