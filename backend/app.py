@@ -197,6 +197,10 @@ def get_analysis(analysis_id):
 @app.route('/api/analyses/<analysis_id>', methods=['DELETE'])
 def delete_analysis(analysis_id):
     """Delete a specific safety compliance analysis by ID"""
+    # Prevent "all" from being treated as an ID
+    if analysis_id == 'all':
+        return jsonify({'error': 'Use /api/analyses/all endpoint to delete all analyses'}), 400
+    
     if not supabase:
         return jsonify({'error': 'Supabase not configured'}), 503
     
