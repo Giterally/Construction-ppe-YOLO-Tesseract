@@ -259,7 +259,7 @@ class SafetyComplianceDetector:
                     
                     # Apply final cleaning
                     final_text = self._clean_ocr_text(best_text)
-                    steps.append({"step": 4, "name": "Final Text", "status": "completed",
+                    steps.append({"step": 6, "name": "Final Text", "status": "completed",
                                 "final_text": final_text})
                     return final_text.strip(), steps
                 else:
@@ -298,13 +298,13 @@ class SafetyComplianceDetector:
             # Get raw OCR text
             raw_text = pytesseract.image_to_string(img, config=custom_config).strip()
             if return_steps:
-                steps.append({"step": "ocr_raw", "name": "Raw OCR Output", "status": "completed", 
+                steps.append({"step": 4, "name": "Raw OCR Output", "status": "completed", 
                             "text": raw_text, "length": len(raw_text)})
             
             # Clean up OCR errors
             cleaned_text = self._clean_ocr_text(raw_text)
             if return_steps:
-                steps.append({"step": "ocr_cleaned", "name": "Initial Text Cleaning", "status": "completed",
+                steps.append({"step": 5, "name": "Initial Text Cleaning", "status": "completed",
                             "original": raw_text,
                             "cleaned": cleaned_text})
             
