@@ -7,6 +7,7 @@ import { API_URL } from './config'
 import './styles/App.css'
 
 interface AnalysisResult {
+  id?: string
   people_count: number
   signage_text: string
   violations: string[]
@@ -85,6 +86,8 @@ function App() {
       }
 
       const data = await response.json()
+      // Note: New analyses from API don't have an ID until saved to DB
+      // The ID will be available when loading from past analyses
       setResult(data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error occurred')
@@ -101,13 +104,14 @@ function App() {
   const handleSelectAnalysis = (analysis: any) => {
     // Convert Supabase analysis format to ResultsDisplay format
     setResult({
+      id: analysis.id,
       people_count: analysis.people_count,
       signage_text: analysis.signage_text || '',
       violations: analysis.violations || [],
       detections: analysis.detections || [],
       compliance_score: analysis.compliance_score,
-      original_image: analysis.original_image_url?.replace(/^https?:\/\/[^/]+/, '') || '',
-      annotated_image: analysis.annotated_image_url?.replace(/^https?:\/\/[^/]+/, '') || '',
+      original_image: analysis.original_image || analysis.original_image_url?.replace(/^https?:\/\/[^/]+/, '') || '',
+      annotated_image: analysis.annotated_image || analysis.annotated_image_url?.replace(/^https?:\/\/[^/]+/, '') || '',
       document_provided: analysis.document_provided || false,
       document_id: analysis.document_id,
       document_name: analysis.document_name,
@@ -130,7 +134,7 @@ function App() {
       <Header />
       
       <div className="app-layout">
-        <Sidebar onSelectAnalysis={handleSelectAnalysis} />
+        <Sidebar onSelectAnalysis={handleSelectAnalysis} selectedAnalysisId={result?.id} />
         
         <main className="main-content">
           {!result && !loading && (

@@ -28,9 +28,10 @@ interface PastAnalysis {
 
 interface SidebarProps {
   onSelectAnalysis: (analysis: PastAnalysis) => void
+  selectedAnalysisId?: string
 }
 
-export default function Sidebar({ onSelectAnalysis }: SidebarProps) {
+export default function Sidebar({ onSelectAnalysis, selectedAnalysisId }: SidebarProps) {
   const [analyses, setAnalyses] = useState<PastAnalysis[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -180,7 +181,7 @@ export default function Sidebar({ onSelectAnalysis }: SidebarProps) {
             {analyses.map((analysis) => (
               <div
                 key={analysis.id}
-                className="analysis-item"
+                className={`analysis-item ${selectedAnalysisId === analysis.id ? 'selected' : ''}`}
                 onClick={() => onSelectAnalysis(analysis)}
               >
                 <div className="analysis-item-header">

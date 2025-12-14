@@ -582,6 +582,11 @@ footer p {
   transform: translateX(4px);
 }
 
+.analysis-item.selected {
+  border: 2px solid var(--color-text);
+  background: white;
+}
+
 .analysis-item-header {
   display: flex;
   justify-content: space-between;
