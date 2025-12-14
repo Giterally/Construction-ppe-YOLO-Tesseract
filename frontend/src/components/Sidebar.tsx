@@ -97,13 +97,43 @@ export default function Sidebar({ onSelectAnalysis }: SidebarProps) {
     }
   }
 
+  const handleClearAll = async () => {
+    if (!confirm('Are you sure you want to delete ALL past analyses? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/api/analyses`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to delete all analyses')
+      }
+
+      // Refresh the list after deletion
+      fetchAnalyses()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to delete all analyses')
+      console.error('Error deleting all analyses:', err)
+    }
+  }
+
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <h2>Past Analyses</h2>
-        <button onClick={fetchAnalyses} className="btn-refresh" title="Refresh">
-          ↻
-        </button>
+        <div className="sidebar-header-actions">
+          <button onClick={fetchAnalyses} className="btn-refresh" title="Refresh">
+            ↻
+          </button>
+          {analyses.length > 0 && (
+            <button onClick={handleClearAll} className="btn-clear-all" title="Clear all analyses">
+              Clear All
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="sidebar-content">

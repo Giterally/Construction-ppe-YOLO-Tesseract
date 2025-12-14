@@ -196,6 +196,24 @@ def delete_analysis(analysis_id):
         print(f"Error deleting analysis: {e}")
         return jsonify({'error': 'Failed to delete analysis'}), 500
 
+@app.route('/api/analyses', methods=['DELETE'])
+def delete_all_analyses():
+    """Delete all safety compliance analyses"""
+    if not supabase:
+        return jsonify({'error': 'Supabase not configured'}), 503
+    
+    try:
+        # Delete all analyses
+        response = supabase.table('safety_analyses')\
+            .delete()\
+            .neq('id', '00000000-0000-0000-0000-000000000000')\
+            .execute()  # .neq() with a dummy ID effectively deletes all
+        
+        return jsonify({'success': True, 'message': 'All analyses deleted successfully', 'count': len(response.data) if response.data else 0})
+    except Exception as e:
+        print(f"Error deleting all analyses: {e}")
+        return jsonify({'error': 'Failed to delete all analyses'}), 500
+
 @app.route('/api/documents', methods=['GET'])
 def get_documents():
     """Get list of available UK construction documents for selection"""
