@@ -162,7 +162,14 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
         <details className="details-section ocr-steps">
           <summary>OCR Processing Steps</summary>
           <div className="ocr-visual-timeline">
-            {result.ocr_processing_steps.map((step, index) => (
+            {result.ocr_processing_steps
+              .sort((a, b) => {
+                // Sort by step number if both are numbers, otherwise maintain order
+                const aStep = typeof a.step === 'number' ? a.step : 999
+                const bStep = typeof b.step === 'number' ? b.step : 999
+                return aStep - bStep
+              })
+              .map((step, index) => (
               <div key={index} className="ocr-step-visual">
                 <div className="ocr-step-title">{step.name}</div>
                 {step.image && (
