@@ -314,7 +314,7 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
       {/* Cross-Check Results */}
       {result.document_provided && result.cross_check && (
         <div className="cross-check-section">
-          <h3>Document Cross-Check Analysis {result.document_name && `(${result.document_name} selected from dropdown; CDM 2015 automatically included as general regulation)`}</h3>
+          <h3>Document Cross-Check Analysis {result.document_name && `(${result.document_name} selected from dropdown; CDM 2015 and HSE Guidelines automatically included as general UK construction regulations)`}</h3>
 
           {/* Regulatory Compliance Status */}
           <div className="regulatory-status">
