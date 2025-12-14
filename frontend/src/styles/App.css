@@ -76,6 +76,31 @@ body {
   font-size: 18px;
   color: var(--color-secondary);
   font-weight: 400;
+  margin-bottom: calc(var(--spacing-unit) * 4);
+}
+
+.header .quote {
+  margin: calc(var(--spacing-unit) * 4) 0 0 0;
+  padding: calc(var(--spacing-unit) * 4) 0;
+  border-left: 3px solid var(--color-text);
+  padding-left: calc(var(--spacing-unit) * 4);
+  font-style: italic;
+  max-width: 800px;
+}
+
+.header .quote p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--color-text);
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.header .quote cite {
+  display: block;
+  font-size: 14px;
+  font-style: normal;
+  color: var(--color-secondary);
+  margin-top: calc(var(--spacing-unit) * 2);
 }
 
 /* Main Content */
