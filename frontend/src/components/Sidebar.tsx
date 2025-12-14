@@ -9,6 +9,21 @@ interface PastAnalysis {
   created_at: string
   original_image_url: string
   annotated_image_url: string
+  original_image?: string
+  annotated_image?: string
+  signage_text?: string
+  detections?: Array<{
+    type: string
+    confidence: number
+    bbox: number[]
+  }>
+  ocr_processing_steps?: Array<{
+    step: number | string
+    name: string
+    status: string
+    [key: string]: any
+  }>
+  [key: string]: any
 }
 
 interface SidebarProps {
