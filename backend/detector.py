@@ -37,8 +37,8 @@ class SafetyComplianceDetector:
             'ocr_processing_steps': List[Dict]  # New: processing steps for debugging
         }
         """
-        # 1. Run YOLO detection
-        results = self.model(image_path, conf=0.5)
+        # 1. Run YOLO detection with higher confidence threshold
+        results = self.model(image_path, conf=0.6)
         
         # 2. Extract all detections (not just people)
         people_count = 0
@@ -47,12 +47,31 @@ class SafetyComplianceDetector:
         # Get class names from model (COCO dataset has 80 classes)
         class_names = self.model.names
         
+        # Filter out classes unlikely to be on construction sites
+        UNLIKELY_CLASSES = [
+            'airplane', 'boat', 'train',  # Transportation not on construction sites
+            'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe',  # Animals
+            'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake',  # Food
+            'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',  # Kitchen items
+            'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'tv',  # Electronics/appliances
+            'couch', 'bed', 'dining table', 'toilet',  # Furniture
+            'backpack', 'umbrella', 'handbag', 'tie', 'suitcase',  # Personal items
+            'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'frisbee', 'skis', 'snowboard',  # Sports equipment
+            'book', 'scissors', 'teddy bear', 'hair drier', 'toothbrush',  # Miscellaneous
+            'traffic light', 'fire hydrant', 'stop sign', 'parking meter',  # Street infrastructure (usually not on construction sites)
+            'bench', 'potted plant', 'vase', 'clock'  # Decorative items
+        ]
+        
         for result in results:
             boxes = result.boxes
             for box in boxes:
                 class_id = int(box.cls[0])
                 confidence = float(box.conf[0])
                 class_name = class_names[class_id]  # Get class name (e.g., 'person', 'car', 'bus')
+                
+                # Skip unlikely classes for construction sites
+                if class_name.lower() in [c.lower() for c in UNLIKELY_CLASSES]:
+                    continue
                 
                 coords = box.xyxy[0].tolist()
                 detections.append({
