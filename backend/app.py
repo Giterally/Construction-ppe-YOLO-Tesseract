@@ -316,6 +316,11 @@ def save_analysis_to_db(results: dict):
         else:
             annotated_image_url = f"http://localhost:5001/api/images/{annotated_image}"
         
+            # Get OCR processing steps from results
+            ocr_steps = results.get('ocr_processing_steps')
+            if ocr_steps is None:
+                ocr_steps = []
+            
             data = {
                 'original_image_url': original_image_url,
                 'annotated_image_url': annotated_image_url,
@@ -329,8 +334,14 @@ def save_analysis_to_db(results: dict):
                 'document_name': results.get('document_name'),
                 'document_requirements': results.get('document_requirements'),
                 'cross_check': results.get('cross_check'),
-                'ocr_processing_steps': results.get('ocr_processing_steps')
+                'ocr_processing_steps': ocr_steps
             }
+            
+            # Debug: Print OCR steps to verify they're being saved
+            if ocr_steps:
+                print(f"💾 Saving {len(ocr_steps)} OCR processing steps to database")
+            else:
+                print(f"⚠️  No OCR processing steps found in results")
         
         supabase.table('safety_analyses').insert(data).execute()
         print(f"✅ Saved analysis to Supabase")
