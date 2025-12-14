@@ -326,12 +326,24 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
 
           {/* Regulatory Compliance Status */}
           <div className="regulatory-status">
-            <div className="status-badge" style={{background: '#f0f0f0', color: '#666', border: '1px solid #ddd'}}>
+            <a 
+              href="https://www.hse.gov.uk/construction/cdm/2015/index.htm" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="status-badge" 
+              style={{background: '#f0f0f0', color: '#666', border: '1px solid #ddd', textDecoration: 'none', display: 'inline-block'}}
+            >
               CDM 2015
-            </div>
-            <div className="status-badge" style={{background: '#f0f0f0', color: '#666', border: '1px solid #ddd'}}>
+            </a>
+            <a 
+              href="https://www.hse.gov.uk/construction/index.htm" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="status-badge" 
+              style={{background: '#f0f0f0', color: '#666', border: '1px solid #ddd', textDecoration: 'none', display: 'inline-block'}}
+            >
               HSE Guidelines
-            </div>
+            </a>
           </div>
 
           {/* Cross-Check Violations */}
