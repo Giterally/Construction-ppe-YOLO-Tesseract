@@ -161,41 +161,6 @@ def get_analyses():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/analyses/<analysis_id>', methods=['GET'])
-def get_analysis(analysis_id):
-    """Get a specific safety compliance analysis by ID"""
-    if not supabase:
-        return jsonify({'error': 'Supabase not configured'}), 503
-    
-    try:
-        response = supabase.table('safety_analyses')\
-            .select('*')\
-            .eq('id', analysis_id)\
-            .single()\
-            .execute()
-        
-        return jsonify(response.data)
-    except Exception as e:
-        return jsonify({'error': 'Analysis not found'}), 404
-
-@app.route('/api/analyses/<analysis_id>', methods=['DELETE'])
-def delete_analysis(analysis_id):
-    """Delete a specific safety compliance analysis by ID"""
-    if not supabase:
-        return jsonify({'error': 'Supabase not configured'}), 503
-    
-    try:
-        # Delete the analysis
-        response = supabase.table('safety_analyses')\
-            .delete()\
-            .eq('id', analysis_id)\
-            .execute()
-        
-        return jsonify({'success': True, 'message': 'Analysis deleted successfully'})
-    except Exception as e:
-        print(f"Error deleting analysis: {e}")
-        return jsonify({'error': 'Failed to delete analysis'}), 500
-
 @app.route('/api/analyses', methods=['DELETE'])
 def delete_all_analyses():
     """Delete all safety compliance analyses"""
@@ -254,6 +219,41 @@ def delete_all_analyses():
     except Exception as e:
         print(f"Error deleting all analyses: {e}")
         return jsonify({'error': f'Failed to delete all analyses: {str(e)}'}), 500
+
+@app.route('/api/analyses/<analysis_id>', methods=['GET'])
+def get_analysis(analysis_id):
+    """Get a specific safety compliance analysis by ID"""
+    if not supabase:
+        return jsonify({'error': 'Supabase not configured'}), 503
+    
+    try:
+        response = supabase.table('safety_analyses')\
+            .select('*')\
+            .eq('id', analysis_id)\
+            .single()\
+            .execute()
+        
+        return jsonify(response.data)
+    except Exception as e:
+        return jsonify({'error': 'Analysis not found'}), 404
+
+@app.route('/api/analyses/<analysis_id>', methods=['DELETE'])
+def delete_analysis(analysis_id):
+    """Delete a specific safety compliance analysis by ID"""
+    if not supabase:
+        return jsonify({'error': 'Supabase not configured'}), 503
+    
+    try:
+        # Delete the analysis
+        response = supabase.table('safety_analyses')\
+            .delete()\
+            .eq('id', analysis_id)\
+            .execute()
+        
+        return jsonify({'success': True, 'message': 'Analysis deleted successfully'})
+    except Exception as e:
+        print(f"Error deleting analysis: {e}")
+        return jsonify({'error': 'Failed to delete analysis'}), 500
 
 @app.route('/api/documents', methods=['GET'])
 def get_documents():
