@@ -158,71 +158,73 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
       </details>
 
       {/* OCR Processing Steps - Visual Timeline */}
-      {result.ocr_processing_steps && result.ocr_processing_steps.length > 0 && (
-        <details className="details-section ocr-steps">
-          <summary>OCR Processing Steps</summary>
-          <div className="ocr-visual-timeline">
-            {result.ocr_processing_steps
-              .sort((a, b) => {
-                // Sort by step number if both are numbers, otherwise maintain order
-                const aStep = typeof a.step === 'number' ? a.step : 999
-                const bStep = typeof b.step === 'number' ? b.step : 999
-                return aStep - bStep
-              })
-              .map((step, index) => (
-              <div key={index} className="ocr-step-visual">
-                <div className="ocr-step-title">{step.name}</div>
-                {step.image && (
-                  <div className="ocr-step-image-container">
-                    <img 
-                      src={`${API_URL}${step.image}`} 
-                      alt={step.name}
-                      className="ocr-step-image"
-                    />
-                  </div>
-                )}
-                {step.highlighted_image && (
-                  <div className="ocr-step-image-container">
-                    <div className="ocr-step-label">Detected Text Regions</div>
-                    <img 
-                      src={`${API_URL}${step.highlighted_image}`} 
-                      alt="Highlighted text"
-                      className="ocr-step-image"
-                    />
-                  </div>
-                )}
-                {step.detected_text && (
-                  <div className="ocr-step-detected-text">
-                    <strong>Detected:</strong> {step.detected_text}
-                  </div>
-                )}
-                {step.text && (
-                  <div className="ocr-step-detected-text">
-                    <strong>Raw Text:</strong> {step.text}
-                  </div>
-                )}
-                {step.original && step.cleaned && (
-                  <div className="ocr-step-cleaning">
-                    <div><strong>Original:</strong> {step.original}</div>
-                    <div><strong>Cleaned:</strong> {step.cleaned}</div>
-                  </div>
-                )}
-                {step.final_text && (
-                  <div className="ocr-step-final-text">
-                    <strong>Final Result:</strong> {step.final_text}
-                  </div>
-                )}
-                {step.reason && (
-                  <div className="ocr-step-reason">{step.reason}</div>
-                )}
-                {index < result.ocr_processing_steps.length - 1 && (
-                  <div className="ocr-step-arrow">↓</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
+      {result.ocr_processing_steps && result.ocr_processing_steps.length > 0 && (() => {
+        const sortedSteps = result.ocr_processing_steps!
+          .sort((a, b) => {
+            // Sort by step number if both are numbers, otherwise maintain order
+            const aStep = typeof a.step === 'number' ? a.step : 999
+            const bStep = typeof b.step === 'number' ? b.step : 999
+            return aStep - bStep
+          })
+        return (
+          <details className="details-section ocr-steps">
+            <summary>OCR Processing Steps</summary>
+            <div className="ocr-visual-timeline">
+              {sortedSteps.map((step, index) => (
+                <div key={index} className="ocr-step-visual">
+                  <div className="ocr-step-title">{step.name}</div>
+                  {step.image && (
+                    <div className="ocr-step-image-container">
+                      <img 
+                        src={`${API_URL}${step.image}`} 
+                        alt={step.name}
+                        className="ocr-step-image"
+                      />
+                    </div>
+                  )}
+                  {step.highlighted_image && (
+                    <div className="ocr-step-image-container">
+                      <div className="ocr-step-label">Detected Text Regions</div>
+                      <img 
+                        src={`${API_URL}${step.highlighted_image}`} 
+                        alt="Highlighted text"
+                        className="ocr-step-image"
+                      />
+                    </div>
+                  )}
+                  {step.detected_text && (
+                    <div className="ocr-step-detected-text">
+                      <strong>Detected:</strong> {step.detected_text}
+                    </div>
+                  )}
+                  {step.text && (
+                    <div className="ocr-step-detected-text">
+                      <strong>Raw Text:</strong> {step.text}
+                    </div>
+                  )}
+                  {step.original && step.cleaned && (
+                    <div className="ocr-step-cleaning">
+                      <div><strong>Original:</strong> {step.original}</div>
+                      <div><strong>Cleaned:</strong> {step.cleaned}</div>
+                    </div>
+                  )}
+                  {step.final_text && (
+                    <div className="ocr-step-final-text">
+                      <strong>Final Result:</strong> {step.final_text}
+                    </div>
+                  )}
+                  {step.reason && (
+                    <div className="ocr-step-reason">{step.reason}</div>
+                  )}
+                  {index < sortedSteps.length - 1 && (
+                    <div className="ocr-step-arrow">↓</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </details>
+        )
+      })()}
 
       {/* Document Requirements Section */}
       {result.document_provided && result.document_requirements && (
