@@ -166,12 +166,12 @@ class SafetyComplianceDetector:
             if isinstance(result1, tuple) and isinstance(result1[0], tuple):
                 # Return format: ((text, steps), highlighted_img)
                 (text1, ocr_steps), highlighted_img1 = result1
-                steps.extend(ocr_steps)
             else:
                 # Fallback: just text and image
                 text1, highlighted_img1 = result1
+                ocr_steps = []
             
-            # Save highlighted image
+            # Add Text Detection step right after Grayscale (before OCR text steps)
             if unique_id and highlighted_img1 is not None:
                 try:
                     highlight_path = os.path.join(base_path, f"{unique_id}_ocr_highlighted{file_ext}")
@@ -185,6 +185,10 @@ class SafetyComplianceDetector:
                     steps.append({"step": 3, "name": "Text Detection", "status": "completed",
                                 "image": f"/api/images/{unique_id}_ocr_threshold{file_ext}",
                                 "detected_text": text1})
+            
+            # Now add the OCR text processing steps (Raw OCR Output, Initial Text Cleaning)
+            if ocr_steps:
+                steps.extend(ocr_steps)
             
             # Try other methods but don't add to visual steps
             try:
