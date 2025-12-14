@@ -203,13 +203,19 @@ def delete_all_analyses():
         return jsonify({'error': 'Supabase not configured'}), 503
     
     try:
-        # Delete all analyses
+        # First get count of all analyses
+        count_response = supabase.table('safety_analyses')\
+            .select('id', count='exact')\
+            .execute()
+        
+        count = count_response.count if hasattr(count_response, 'count') else 0
+        
+        # Delete all analyses (Supabase allows delete without filter to delete all)
         response = supabase.table('safety_analyses')\
             .delete()\
-            .neq('id', '00000000-0000-0000-0000-000000000000')\
-            .execute()  # .neq() with a dummy ID effectively deletes all
+            .execute()
         
-        return jsonify({'success': True, 'message': 'All analyses deleted successfully', 'count': len(response.data) if response.data else 0})
+        return jsonify({'success': True, 'message': 'All analyses deleted successfully', 'count': count})
     except Exception as e:
         print(f"Error deleting all analyses: {e}")
         return jsonify({'error': 'Failed to delete all analyses'}), 500
