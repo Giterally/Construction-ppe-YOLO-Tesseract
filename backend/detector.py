@@ -233,6 +233,32 @@ class SafetyComplianceDetector:
                 print(f"Warning: Tesseract OCR not available: {e2}")
                 return "", steps
     
+    def _ocr_with_visualization(self, img: Image.Image, original_img: np.ndarray, psm: int = 6) -> tuple[str, np.ndarray]:
+        """
+        Run OCR and return text + highlighted image showing detected characters
+        """
+        try:
+            custom_config = f'--psm {psm} --oem 3 -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,!?;:()[]- '
+            text = pytesseract.image_to_string(img, config=custom_config).strip()
+            text = self._clean_ocr_text(text)
+            
+            # Get bounding boxes for visualization
+            try:
+                data = pytesseract.image_to_data(img, config=custom_config, output_type=pytesseract.Output.DICT)
+                highlighted = original_img.copy()
+                
+                n_boxes = len(data['level'])
+                for i in range(n_boxes):
+                    if int(data['conf'][i]) > 0:  # Valid detection
+                        (x, y, w, h) = (data['left'][i], data['top'][i], data['width'][i], data['height'][i])
+                        cv2.rectangle(highlighted, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                
+                return text, highlighted
+            except:
+                return text, None
+        except:
+            return "", None
+    
     def _ocr_with_config(self, img: Image.Image, psm: int = 6, return_steps: bool = False, method_name: str = "") -> str | tuple[str, List[Dict]]:
         """
         Run Tesseract OCR with specific configuration
@@ -396,6 +422,11 @@ class SafetyComplianceDetector:
             return False
         
         text = text.strip()
+        
+        # Check 0: Too much punctuation (gibberish often has lots of punctuation)
+        punctuation_count = sum(1 for c in text if c in '.,;:!?()[]-')
+        if len(text) > 0 and punctuation_count > len(text) * 0.3:  # More than 30% punctuation = likely gibberish
+            return False
         
         # Check 1: Too many random capital letters in middle of words (gibberish pattern)
         # Real text has mostly lowercase with occasional capitals
