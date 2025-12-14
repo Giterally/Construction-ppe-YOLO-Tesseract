@@ -299,20 +299,21 @@ def save_analysis_to_db(results: dict):
         else:
             annotated_image_url = f"http://localhost:5001/api/images/{annotated_image}"
         
-        data = {
-            'original_image_url': original_image_url,
-            'annotated_image_url': annotated_image_url,
-            'people_count': results.get('people_count', 0),
-            'signage_text': results.get('signage_text', ''),
-            'violations': results.get('violations', []),
-            'detections': results.get('detections', []),
-            'compliance_score': results.get('compliance_score', 0),
-            'document_provided': results.get('document_provided', False),
-            'document_id': results.get('document_id'),
-            'document_name': results.get('document_name'),
-            'document_requirements': results.get('document_requirements'),
-            'cross_check': results.get('cross_check')
-        }
+            data = {
+                'original_image_url': original_image_url,
+                'annotated_image_url': annotated_image_url,
+                'people_count': results.get('people_count', 0),
+                'signage_text': results.get('signage_text', ''),
+                'violations': results.get('violations', []),
+                'detections': results.get('detections', []),
+                'compliance_score': results.get('compliance_score', 0),
+                'document_provided': results.get('document_provided', False),
+                'document_id': results.get('document_id'),
+                'document_name': results.get('document_name'),
+                'document_requirements': results.get('document_requirements'),
+                'cross_check': results.get('cross_check'),
+                'ocr_processing_steps': results.get('ocr_processing_steps')
+            }
         
         supabase.table('safety_analyses').insert(data).execute()
         print(f"✅ Saved analysis to Supabase")
