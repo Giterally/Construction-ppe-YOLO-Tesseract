@@ -189,6 +189,17 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
                     <strong>Detected:</strong> {step.detected_text}
                   </div>
                 )}
+                {step.text && (
+                  <div className="ocr-step-detected-text">
+                    <strong>Raw Text:</strong> {step.text}
+                  </div>
+                )}
+                {step.original && step.cleaned && (
+                  <div className="ocr-step-cleaning">
+                    <div><strong>Original:</strong> {step.original}</div>
+                    <div><strong>Cleaned:</strong> {step.cleaned}</div>
+                  </div>
+                )}
                 {step.final_text && (
                   <div className="ocr-step-final-text">
                     <strong>Final Result:</strong> {step.final_text}
