@@ -168,20 +168,15 @@ def delete_all_analyses():
         return jsonify({'error': 'Supabase not configured'}), 503
     
     try:
-        # First get count of all analyses
-        count_response = supabase.table('safety_analyses')\
-            .select('id', count='exact')\
-            .execute()
-        
-        count = count_response.count if hasattr(count_response, 'count') else 0
-        
         # Delete all analyses by fetching all IDs and deleting them individually
         # This works better with RLS policies
         all_analyses = supabase.table('safety_analyses')\
             .select('id')\
             .execute()
         
+        count = len(all_analyses.data) if all_analyses.data else 0
         deleted_count = 0
+        
         if all_analyses.data:
             for analysis in all_analyses.data:
                 try:
