@@ -30,7 +30,7 @@ export default function Header() {
               src={buildUkLogo} 
               alt="Build UK" 
               style={{
-                maxWidth: '120px',
+                maxWidth: '180px',
                 height: 'auto',
                 flexShrink: 0
               }}
