@@ -172,19 +172,9 @@ class SafetyComplianceDetector:
                 ocr_steps = []
             
             # Add Text Detection step right after Grayscale (before OCR text steps)
-            if unique_id and highlighted_img1 is not None:
-                try:
-                    highlight_path = os.path.join(base_path, f"{unique_id}_ocr_highlighted{file_ext}")
-                    cv2.imwrite(highlight_path, highlighted_img1)
-                    steps.append({"step": 3, "name": "Text Detection", "status": "completed",
-                                "image": f"/api/images/{unique_id}_ocr_threshold{file_ext}",
-                                "highlighted_image": f"/api/images/{unique_id}_ocr_highlighted{file_ext}",
-                                "detected_text": text1})
-                except Exception as e:
-                    print(f"Warning: Could not save highlighted image: {e}")
-                    steps.append({"step": 3, "name": "Text Detection", "status": "completed",
-                                "image": f"/api/images/{unique_id}_ocr_threshold{file_ext}",
-                                "detected_text": text1})
+            if unique_id:
+                steps.append({"step": 3, "name": "Text Detection", "status": "completed",
+                            "image": f"/api/images/{unique_id}_ocr_threshold{file_ext}"})
             
             # Now add the OCR text processing steps (Raw OCR Output, Initial Text Cleaning)
             if ocr_steps:
