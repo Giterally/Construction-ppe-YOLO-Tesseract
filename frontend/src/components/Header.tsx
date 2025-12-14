@@ -7,9 +7,9 @@ export default function Header() {
           Automated detection of workers and safety signage using computer vision
         </p>
         <blockquote className="quote">
-          <p>"Every business uses their own system for compliance & health and safety so the supply chain has to do something different on every job — that leads to tens if not hundreds of different systems for an SME to learn and do."</p>
-          <p>There is no increase or improvement in productivity as every time you have to do something different there is a drag on your time.</p>
-          <p>The cost becomes ridiculous as companies have to buy a different system, train people on each system and time = money</p>
+          <p>"Every business uses their <strong>own system</strong> for <strong>compliance & health and safety</strong> so the <strong>supply chain</strong> has to do something <strong>different on every job</strong> — that leads to <strong>tens if not hundreds of different systems</strong> for an <strong>SME</strong> to learn and do."</p>
+          <p>"There is <strong>no increase or improvement in productivity</strong> as every time you have to <strong>do something different</strong> there is a <strong>drag on your time</strong>."</p>
+          <p>"The <strong>cost becomes ridiculous</strong> as companies have to <strong>buy a different system</strong>, <strong>train people on each system</strong> and <strong>time = money</strong>"</p>
           <cite>
             — <a href="https://www.linkedin.com/in/suzannah-nichol-obe-💙💛-48540a47/" target="_blank" rel="noopener noreferrer" style={{color: 'inherit', textDecoration: 'none'}}>
               Suzannah Nichol OBE, Chief Executive at Build UK
