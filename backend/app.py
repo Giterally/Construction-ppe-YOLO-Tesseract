@@ -105,8 +105,8 @@ def analyze_image():
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], saved_filename)
         file.save(filepath)
         
-        # Analyze image
-        results = detector.analyze_image(filepath)
+        # Analyze image (pass unique_id for OCR visualization)
+        results = detector.analyze_image(filepath, unique_id=unique_id)
         
         # Create annotated image
         annotated_filename = f"{unique_id}_annotated.{file_ext}"
@@ -303,7 +303,7 @@ def analyze_with_document():
         image_file.save(image_path)
         
         # Standard photo analysis (existing functionality)
-        photo_results = detector.analyze_image(image_path)
+        photo_results = detector.analyze_image(image_path, unique_id=unique_id)
         
         # Create annotated image
         annotated_filename = f"{unique_id}_annotated.{file_ext}"

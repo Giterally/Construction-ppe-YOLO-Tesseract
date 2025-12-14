@@ -157,58 +157,48 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
         </div>
       </details>
 
-      {/* OCR Processing Steps */}
+      {/* OCR Processing Steps - Visual Timeline */}
       {result.ocr_processing_steps && result.ocr_processing_steps.length > 0 && (
         <details className="details-section ocr-steps">
-          <summary>OCR Processing Steps ({result.ocr_processing_steps.length} steps)</summary>
-          <div className="ocr-steps-list">
+          <summary>OCR Processing Steps</summary>
+          <div className="ocr-visual-timeline">
             {result.ocr_processing_steps.map((step, index) => (
-              <div key={index} className={`ocr-step-item status-${step.status}`}>
-                <div className="ocr-step-header">
-                  <span className="ocr-step-number">{typeof step.step === 'number' ? step.step.toFixed(1) : step.step}</span>
-                  <span className="ocr-step-name">{step.name}</span>
-                  <span className={`ocr-step-status status-${step.status}`}>
-                    {step.status === 'completed' ? '✓' : step.status === 'failed' ? '✗' : step.status === 'rejected' ? '✗' : '○'}
-                  </span>
-                </div>
-                {step.note && <div className="ocr-step-note">{step.note}</div>}
-                {step.method && <div className="ocr-step-method">{step.method}</div>}
-                {step.text_preview && (
-                  <div className="ocr-step-text">
-                    <strong>Text:</strong> {step.text_preview}
+              <div key={index} className="ocr-step-visual">
+                <div className="ocr-step-title">{step.name}</div>
+                {step.image && (
+                  <div className="ocr-step-image-container">
+                    <img 
+                      src={`${API_URL}${step.image}`} 
+                      alt={step.name}
+                      className="ocr-step-image"
+                    />
                   </div>
                 )}
-                {step.is_valid !== undefined && (
-                  <div className="ocr-step-validation">
-                    <strong>Valid:</strong> {step.is_valid ? '✓ Yes' : '✗ No'}
+                {step.highlighted_image && (
+                  <div className="ocr-step-image-container">
+                    <div className="ocr-step-label">Detected Text Regions</div>
+                    <img 
+                      src={`${API_URL}${step.highlighted_image}`} 
+                      alt="Highlighted text"
+                      className="ocr-step-image"
+                    />
                   </div>
                 )}
-                {step.confidence !== undefined && (
-                  <div className="ocr-step-confidence">
-                    <strong>Confidence:</strong> {step.confidence}% {step.passed ? '✓' : '✗'}
+                {step.detected_text && (
+                  <div className="ocr-step-detected-text">
+                    <strong>Detected:</strong> {step.detected_text}
+                  </div>
+                )}
+                {step.final_text && (
+                  <div className="ocr-step-final-text">
+                    <strong>Final Result:</strong> {step.final_text}
                   </div>
                 )}
                 {step.reason && (
-                  <div className="ocr-step-reason">
-                    <strong>Reason:</strong> {step.reason}
-                  </div>
+                  <div className="ocr-step-reason">{step.reason}</div>
                 )}
-                {step.results && (
-                  <div className="ocr-step-results">
-                    <strong>Results:</strong>
-                    <ul>
-                      {step.results.map((r: any, i: number) => (
-                        <li key={i}>
-                          {r.method}: {r.text} ({r.length} chars)
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {step.error && (
-                  <div className="ocr-step-error">
-                    <strong>Error:</strong> {step.error}
-                  </div>
+                {index < result.ocr_processing_steps.length - 1 && (
+                  <div className="ocr-step-arrow">↓</div>
                 )}
               </div>
             ))}

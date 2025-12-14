@@ -25,7 +25,7 @@ class SafetyComplianceDetector:
         # Import OpenAI for type hints
         from openai import OpenAI
         
-    def analyze_image(self, image_path: str) -> Dict:
+    def analyze_image(self, image_path: str, unique_id: str = None) -> Dict:
         """
         Analyze image for safety compliance
         Returns: {
@@ -85,7 +85,7 @@ class SafetyComplianceDetector:
                     people_count += 1
         
         # 3. Run Tesseract OCR with preprocessing
-        signage_text, ocr_steps = self._extract_text_with_ocr(image_path)
+        signage_text, ocr_steps = self._extract_text_with_ocr(image_path, unique_id)
         
         # 4. Compliance analysis
         violations = self._check_compliance(people_count, signage_text)
@@ -100,13 +100,16 @@ class SafetyComplianceDetector:
             'ocr_processing_steps': ocr_steps
         }
     
-    def _extract_text_with_ocr(self, image_path: str) -> tuple[str, List[Dict]]:
+    def _extract_text_with_ocr(self, image_path: str, unique_id: str = None) -> tuple[str, List[Dict]]:
         """
         Extract text from image using Tesseract OCR with proper preprocessing
         Tries multiple preprocessing methods and OCR configurations for best results
         Returns: (final_text, processing_steps)
+        unique_id: Optional unique identifier for saving intermediate images
         """
         steps = []
+        base_path = os.path.dirname(image_path) if unique_id else None
+        file_ext = os.path.splitext(image_path)[1] if unique_id else None
         try:
             # Load image with OpenCV for preprocessing
             img_cv = cv2.imread(image_path)
@@ -118,48 +121,61 @@ class SafetyComplianceDetector:
                 text, sub_steps = self._ocr_with_config(img, return_steps=True)
                 steps.extend(sub_steps)
                 return text, steps
-            steps.append({"step": 1, "name": "Load Image", "status": "completed", "note": f"Image size: {img_cv.shape}"})
+            steps.append({"step": 1, "name": "Original Image", "status": "completed", 
+                         "image": f"/api/images/{unique_id}_original{file_ext}" if unique_id else None})
             
-            steps.append({"step": 2, "name": "Preprocessing Methods", "status": "started"})
+            # Save original for display
+            if unique_id:
+                cv2.imwrite(os.path.join(base_path, f"{unique_id}_original{file_ext}"), img_cv)
+            
             # Method 1: Grayscale + threshold (best for high contrast signs)
             gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-            steps.append({"step": 2.1, "name": "Grayscale Conversion", "status": "completed"})
+            
+            # Save grayscale
+            if unique_id:
+                gray_path = os.path.join(base_path, f"{unique_id}_grayscale{file_ext}")
+                cv2.imwrite(gray_path, gray)
+                steps.append({"step": 2, "name": "Grayscale Conversion", "status": "completed",
+                            "image": f"/api/images/{unique_id}_grayscale{file_ext}"})
             
             # Apply adaptive thresholding for better text extraction
             thresh = cv2.adaptiveThreshold(
                 gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
                 cv2.THRESH_BINARY, 11, 2
             )
-            steps.append({"step": 2.2, "name": "Adaptive Thresholding", "status": "completed", "method": "Method 1"})
             
-            # Convert back to PIL Image for Tesseract
+            # Save thresholded image
+            if unique_id:
+                thresh_path = os.path.join(base_path, f"{unique_id}_threshold{file_ext}")
+                cv2.imwrite(thresh_path, thresh)
+            
+            # Get OCR with bounding boxes for visualization
             img_processed = Image.fromarray(thresh)
-            text1, steps1 = self._ocr_with_config(img_processed, psm=6, return_steps=True, method_name="Method 1: Adaptive Threshold")
-            steps.extend(steps1)
+            text1, highlighted_img1 = self._ocr_with_visualization(img_processed, img_cv, psm=6)
             
-            # Method 2: Grayscale + Otsu thresholding
+            # Save highlighted image
+            if unique_id and highlighted_img1 is not None:
+                highlight_path = os.path.join(base_path, f"{unique_id}_highlighted{file_ext}")
+                cv2.imwrite(highlight_path, highlighted_img1)
+                steps.append({"step": 3, "name": "Text Detection", "status": "completed",
+                            "image": f"/api/images/{unique_id}_threshold{file_ext}",
+                            "highlighted_image": f"/api/images/{unique_id}_highlighted{file_ext}",
+                            "detected_text": text1[:100] + "..." if len(text1) > 100 else text1})
+            
+            # Try other methods but don't add to visual steps
             _, thresh2 = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             img_processed2 = Image.fromarray(thresh2)
-            steps.append({"step": 2.3, "name": "Otsu Thresholding", "status": "completed", "method": "Method 2"})
-            text2, steps2 = self._ocr_with_config(img_processed2, psm=7, return_steps=True, method_name="Method 2: Otsu Threshold")
-            steps.extend(steps2)
+            text2, _ = self._ocr_with_visualization(img_processed2, img_cv, psm=7)
             
-            # Method 3: Enhanced contrast + grayscale
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
             enhanced = clahe.apply(gray)
             _, thresh3 = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             img_processed3 = Image.fromarray(thresh3)
-            steps.append({"step": 2.4, "name": "CLAHE Contrast Enhancement + Otsu", "status": "completed", "method": "Method 3"})
-            text3, steps3 = self._ocr_with_config(img_processed3, psm=6, return_steps=True, method_name="Method 3: CLAHE + Otsu")
-            steps.extend(steps3)
+            text3, _ = self._ocr_with_visualization(img_processed3, img_cv, psm=6)
             
-            # Method 4: Original image (fallback)
             img_original = Image.open(image_path)
-            steps.append({"step": 2.5, "name": "Original Image (No Preprocessing)", "status": "completed", "method": "Method 4"})
-            text4, steps4 = self._ocr_with_config(img_original, psm=6, return_steps=True, method_name="Method 4: Original Image")
-            steps.extend(steps4)
+            text4, _ = self._ocr_with_visualization(img_original, img_cv, psm=6)
             
-            steps.append({"step": 3, "name": "Text Validation & Filtering", "status": "started"})
             # Collect all results with validation
             results = [
                 ("Method 1: Adaptive Threshold", text1),
@@ -169,58 +185,37 @@ class SafetyComplianceDetector:
             ]
             non_empty = [(name, t) for name, t in results if t.strip()]
             
-            steps.append({"step": 3.1, "name": "Raw OCR Results", "status": "completed", 
-                         "results": [{"method": name, "text": text[:50] + "..." if len(text) > 50 else text, "length": len(text)} 
-                                     for name, text in results]})
-            
             if non_empty:
                 # Filter out gibberish and get confidence scores
                 valid_results = []
                 for method_name, text in non_empty:
-                    is_valid = self._is_valid_text(text)
-                    steps.append({"step": 3.2, "name": f"Validate: {method_name}", "status": "completed",
-                                "text_preview": text[:50] + "..." if len(text) > 50 else text,
-                                "is_valid": is_valid})
-                    
-                    if is_valid:
-                        # Get confidence score for this text
+                    if self._is_valid_text(text):
                         conf = self._get_ocr_confidence(img_cv, text)
-                        steps.append({"step": 3.3, "name": f"Confidence Check: {method_name}", "status": "completed",
-                                    "confidence": round(conf, 1), "passed": conf > 30})
                         if conf > 30:  # Minimum 30% confidence
                             valid_results.append((text, conf, method_name))
                 
                 if valid_results:
                     # Return the result with highest confidence
                     best_text, best_conf, best_method = max(valid_results, key=lambda x: x[1])
-                    steps.append({"step": 3.4, "name": "Select Best Result", "status": "completed",
-                                "selected_method": best_method, "confidence": round(best_conf, 1)})
                     
                     # Final AI validation for low-confidence results
                     if best_conf < 50 and self.openai_client:
-                        ai_valid = self._ai_validate_text(best_text)
-                        steps.append({"step": 3.5, "name": "AI Validation", "status": "completed",
-                                    "confidence": round(best_conf, 1), "ai_valid": ai_valid})
-                        if not ai_valid:
-                            steps.append({"step": 3.6, "name": "Final Result", "status": "rejected", 
+                        if not self._ai_validate_text(best_text):
+                            steps.append({"step": 4, "name": "Final Result", "status": "rejected", 
                                         "reason": "AI validation failed - text appears to be gibberish"})
                             return "", steps
                     
                     # Apply final cleaning
                     final_text = self._clean_ocr_text(best_text)
-                    steps.append({"step": 4, "name": "Final Text Cleaning", "status": "completed",
-                                "original": best_text[:100] + "..." if len(best_text) > 100 else best_text,
-                                "cleaned": final_text[:100] + "..." if len(final_text) > 100 else final_text})
-                    
-                    steps.append({"step": 5, "name": "OCR Processing Complete", "status": "completed",
-                                "final_text": final_text, "final_length": len(final_text)})
+                    steps.append({"step": 4, "name": "Final Text", "status": "completed",
+                                "final_text": final_text})
                     return final_text.strip(), steps
                 else:
-                    steps.append({"step": 3.6, "name": "Final Result", "status": "rejected", 
-                                "reason": "No valid text found after filtering (all results failed validation or confidence check)"})
+                    steps.append({"step": 4, "name": "Final Result", "status": "rejected", 
+                                "reason": "No valid text found after filtering"})
                     return "", steps
             else:
-                steps.append({"step": 3.6, "name": "Final Result", "status": "rejected", 
+                steps.append({"step": 4, "name": "Final Result", "status": "rejected", 
                             "reason": "No text extracted from any preprocessing method"})
                 return "", steps
                 

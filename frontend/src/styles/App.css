@@ -1164,95 +1164,84 @@ footer p {
   }
 }
 
-/* OCR Processing Steps */
+/* OCR Processing Steps - Visual Timeline */
 .ocr-steps {
   margin-top: calc(var(--spacing-unit) * 3);
 }
 
-.ocr-steps-list {
-  margin-top: calc(var(--spacing-unit) * 2);
+.ocr-visual-timeline {
+  margin-top: calc(var(--spacing-unit) * 3);
   display: flex;
   flex-direction: column;
-  gap: calc(var(--spacing-unit) * 2);
-}
-
-.ocr-step-item {
-  border-left: 3px solid var(--color-border);
-  padding: calc(var(--spacing-unit) * 2);
-  background: #fafafa;
-  font-size: 14px;
-}
-
-.ocr-step-item.status-completed {
-  border-left-color: var(--color-success);
-}
-
-.ocr-step-item.status-failed,
-.ocr-step-item.status-rejected {
-  border-left-color: var(--color-error);
-}
-
-.ocr-step-item.status-started {
-  border-left-color: var(--color-warning);
-}
-
-.ocr-step-header {
-  display: flex;
+  gap: calc(var(--spacing-unit) * 4);
   align-items: center;
-  gap: calc(var(--spacing-unit) * 2);
-  margin-bottom: calc(var(--spacing-unit) * 1);
 }
 
-.ocr-step-number {
+.ocr-step-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 600px;
+  padding: calc(var(--spacing-unit) * 3);
+  background: #fafafa;
+  border-radius: 4px;
+}
+
+.ocr-step-title {
+  font-size: 18px;
   font-weight: 600;
+  margin-bottom: calc(var(--spacing-unit) * 2);
+  color: var(--color-text);
+}
+
+.ocr-step-image-container {
+  width: 100%;
+  margin-bottom: calc(var(--spacing-unit) * 2);
+}
+
+.ocr-step-image {
+  width: 100%;
+  max-width: 500px;
+  height: auto;
+  border: 2px solid var(--color-border);
+  border-radius: 4px;
+  display: block;
+  margin: 0 auto;
+}
+
+.ocr-step-label {
+  font-size: 12px;
   color: var(--color-secondary);
-  min-width: 40px;
+  text-align: center;
+  margin-bottom: calc(var(--spacing-unit) * 1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.ocr-step-name {
-  flex: 1;
-  font-weight: 500;
+.ocr-step-detected-text,
+.ocr-step-final-text {
+  margin-top: calc(var(--spacing-unit) * 2);
+  padding: calc(var(--spacing-unit) * 2);
+  background: white;
+  border-left: 3px solid var(--color-primary);
+  font-size: 14px;
+  width: 100%;
 }
 
-.ocr-step-status {
-  font-size: 16px;
-}
-
-.ocr-step-status.status-completed {
-  color: var(--color-success);
-}
-
-.ocr-step-status.status-failed,
-.ocr-step-status.status-rejected {
-  color: var(--color-error);
-}
-
-.ocr-step-note,
-.ocr-step-method,
-.ocr-step-text,
-.ocr-step-validation,
-.ocr-step-confidence,
-.ocr-step-reason,
-.ocr-step-error {
+.ocr-step-reason {
   margin-top: calc(var(--spacing-unit) * 1);
-  padding-left: calc(var(--spacing-unit) * 5);
+  padding: calc(var(--spacing-unit) * 2);
+  background: #fff3cd;
+  border-left: 3px solid var(--color-warning);
   font-size: 13px;
   color: var(--color-secondary);
+  width: 100%;
 }
 
-.ocr-step-results {
-  margin-top: calc(var(--spacing-unit) * 1);
-  padding-left: calc(var(--spacing-unit) * 5);
-  font-size: 13px;
-}
-
-.ocr-step-results ul {
-  margin-top: calc(var(--spacing-unit) * 1);
-  padding-left: calc(var(--spacing-unit) * 3);
-  list-style: disc;
-}
-
-.ocr-step-results li {
-  margin-top: calc(var(--spacing-unit) * 0.5);
+.ocr-step-arrow {
+  font-size: 24px;
+  color: var(--color-secondary);
+  margin: calc(var(--spacing-unit) * 1) 0;
 }
 
