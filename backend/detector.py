@@ -122,21 +122,21 @@ class SafetyComplianceDetector:
                 steps.extend(sub_steps)
                 return text, steps
             steps.append({"step": 1, "name": "Original Image", "status": "completed", 
-                         "image": f"/api/images/{unique_id}_original{file_ext}" if unique_id else None})
+                         "image": f"/api/images/{unique_id}_ocr_original{file_ext}" if unique_id else None})
             
-            # Save original for display
+            # Save original for display (with _ocr_ prefix to avoid conflicts)
             if unique_id:
-                cv2.imwrite(os.path.join(base_path, f"{unique_id}_original{file_ext}"), img_cv)
+                cv2.imwrite(os.path.join(base_path, f"{unique_id}_ocr_original{file_ext}"), img_cv)
             
             # Method 1: Grayscale + threshold (best for high contrast signs)
             gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
             
             # Save grayscale
             if unique_id:
-                gray_path = os.path.join(base_path, f"{unique_id}_grayscale{file_ext}")
+                gray_path = os.path.join(base_path, f"{unique_id}_ocr_grayscale{file_ext}")
                 cv2.imwrite(gray_path, gray)
                 steps.append({"step": 2, "name": "Grayscale Conversion", "status": "completed",
-                            "image": f"/api/images/{unique_id}_grayscale{file_ext}"})
+                            "image": f"/api/images/{unique_id}_ocr_grayscale{file_ext}"})
             
             # Apply adaptive thresholding for better text extraction
             thresh = cv2.adaptiveThreshold(
@@ -146,7 +146,7 @@ class SafetyComplianceDetector:
             
             # Save thresholded image
             if unique_id:
-                thresh_path = os.path.join(base_path, f"{unique_id}_threshold{file_ext}")
+                thresh_path = os.path.join(base_path, f"{unique_id}_ocr_threshold{file_ext}")
                 cv2.imwrite(thresh_path, thresh)
             
             # Get OCR with bounding boxes for visualization
@@ -155,11 +155,11 @@ class SafetyComplianceDetector:
             
             # Save highlighted image
             if unique_id and highlighted_img1 is not None:
-                highlight_path = os.path.join(base_path, f"{unique_id}_highlighted{file_ext}")
+                highlight_path = os.path.join(base_path, f"{unique_id}_ocr_highlighted{file_ext}")
                 cv2.imwrite(highlight_path, highlighted_img1)
                 steps.append({"step": 3, "name": "Text Detection", "status": "completed",
-                            "image": f"/api/images/{unique_id}_threshold{file_ext}",
-                            "highlighted_image": f"/api/images/{unique_id}_highlighted{file_ext}",
+                            "image": f"/api/images/{unique_id}_ocr_threshold{file_ext}",
+                            "highlighted_image": f"/api/images/{unique_id}_ocr_highlighted{file_ext}",
                             "detected_text": text1[:100] + "..." if len(text1) > 100 else text1})
             
             # Try other methods but don't add to visual steps
