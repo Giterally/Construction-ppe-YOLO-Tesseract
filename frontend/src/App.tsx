@@ -161,7 +161,7 @@ function App() {
       </div>
 
       <footer>
-        <p>Built with YOLOv8 + Tesseract OCR • Interface.ai Technical Demo</p>
+        <p>Built with YOLOv8 + Tesseract OCR</p>
       </footer>
     </div>
   )
