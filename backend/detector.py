@@ -136,10 +136,16 @@ class SafetyComplianceDetector:
             
             # Save grayscale
             if unique_id:
-                gray_path = os.path.join(base_path, f"{unique_id}_ocr_grayscale{file_ext}")
-                cv2.imwrite(gray_path, gray)
-                steps.append({"step": 2, "name": "Grayscale Conversion", "status": "completed",
-                            "image": f"/api/images/{unique_id}_ocr_grayscale{file_ext}"})
+                try:
+                    gray_path = os.path.join(base_path, f"{unique_id}_ocr_grayscale{file_ext}")
+                    cv2.imwrite(gray_path, gray)
+                    steps.append({"step": 2, "name": "Grayscale Conversion", "status": "completed",
+                                "image": f"/api/images/{unique_id}_ocr_grayscale{file_ext}"})
+                except Exception as e:
+                    print(f"Warning: Could not save grayscale image: {e}")
+                    steps.append({"step": 2, "name": "Grayscale Conversion", "status": "completed"})
+            else:
+                steps.append({"step": 2, "name": "Grayscale Conversion", "status": "completed"})
             
             # Apply adaptive thresholding for better text extraction
             thresh = cv2.adaptiveThreshold(
