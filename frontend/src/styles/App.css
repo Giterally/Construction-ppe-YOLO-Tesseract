@@ -63,6 +63,27 @@ body {
   border-bottom: 2px solid var(--color-text);
   padding: calc(var(--spacing-unit) * 6) 0;
   margin-bottom: calc(var(--spacing-unit) * 8);
+  background-image: url('/construction_bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.75);
+  z-index: 0;
+}
+
+.header .container {
+  position: relative;
+  z-index: 1;
 }
 
 .header h1 {
