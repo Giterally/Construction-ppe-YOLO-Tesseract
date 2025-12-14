@@ -1241,6 +1241,22 @@ footer p {
   letter-spacing: 0.5px;
 }
 
+.ocr-step-cleaning {
+  margin-top: calc(var(--spacing-unit) * 1);
+  padding: calc(var(--spacing-unit) * 2);
+  background: #f8f9fa;
+  border-left: 3px solid #3498db;
+  font-size: 13px;
+}
+
+.ocr-step-cleaning div {
+  margin-bottom: calc(var(--spacing-unit) * 1);
+}
+
+.ocr-step-cleaning div:last-child {
+  margin-bottom: 0;
+}
+
 .ocr-step-detected-text,
 .ocr-step-final-text {
   margin-top: calc(var(--spacing-unit) * 2);
