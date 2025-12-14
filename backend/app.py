@@ -79,7 +79,7 @@ def allowed_file(filename):
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'healthy', 'service': 'Safety PPE Compliance Checker'})
+    return jsonify({'status': 'healthy', 'service': 'Construction H&S Compliance Analyzer'})
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_image():
@@ -447,7 +447,7 @@ def analyze_with_document():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5001))
-    print("🚀 Starting Safety PPE Compliance Checker API...")
+    print("🚀 Starting Construction H&S Compliance Analyzer API...")
     print(f"📍 Server running on port {port}")
     app.run(host='0.0.0.0', port=port, debug=False)
 
