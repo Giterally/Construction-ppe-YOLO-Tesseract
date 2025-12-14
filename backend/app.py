@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from detector import SafetyComplianceDetector, create_annotated_image
 from document_processor import DocumentProcessor
+from report_generator import generate_compliance_report
+from datetime import datetime
 import os
 import uuid
 from werkzeug.utils import secure_filename
@@ -43,6 +45,7 @@ else:
 # Configure upload folder
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(os.path.join(UPLOAD_FOLDER, 'reports'), exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
@@ -442,7 +445,123 @@ def analyze_with_document():
             return jsonify(photo_results)
     
     except Exception as e:
-        print(f"Error in analyze_with_document: {e}")
+        print(f"Error in analyze_with-document: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyses/<analysis_id>/report', methods=['POST'])
+def generate_report_for_analysis(analysis_id):
+    """
+    Generate PDF report for a specific analysis
+    Accepts optional metadata (site_name, contractor_name, submitted_to)
+    """
+    try:
+        # Get optional metadata from request
+        data = request.get_json() or {}
+        site_name = data.get('site_name', 'Not specified')
+        contractor_name = data.get('contractor_name', 'Not specified')
+        submitted_to = data.get('submitted_to', 'Not specified')
+        
+        if not supabase:
+            return jsonify({'error': 'Supabase not configured'}), 503
+        
+        # Fetch analysis from Supabase
+        result = supabase.table('safety_analyses').select('*').eq('id', analysis_id).execute()
+        
+        if not result.data or len(result.data) == 0:
+            return jsonify({'error': 'Analysis not found'}), 404
+        
+        analysis = result.data[0]
+        
+        # Add metadata to analysis
+        analysis['site_name'] = site_name
+        analysis['contractor_name'] = contractor_name
+        analysis['submitted_to'] = submitted_to
+        
+        # Get image paths from URLs
+        original_image_url = analysis.get('original_image_url', '')
+        annotated_image_url = analysis.get('annotated_image_url', '')
+        
+        # Convert URLs to local paths
+        if original_image_url:
+            # Extract filename from URL (could be localhost or Railway URL)
+            filename = original_image_url.split('/')[-1]
+            analysis['original_image_path'] = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        else:
+            analysis['original_image_path'] = ''
+        
+        if annotated_image_url:
+            filename = annotated_image_url.split('/')[-1]
+            analysis['annotated_image_path'] = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        else:
+            analysis['annotated_image_path'] = ''
+        
+        # Create reports directory if it doesn't exist
+        reports_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'reports')
+        os.makedirs(reports_dir, exist_ok=True)
+        
+        # Generate PDF filename
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        pdf_filename = f"report_{analysis_id[:8]}_{timestamp}.pdf"
+        pdf_path = os.path.join(reports_dir, pdf_filename)
+        
+        # Generate PDF
+        generate_compliance_report(analysis, pdf_path)
+        
+        # Update database with report info
+        report_url = f"/api/reports/{pdf_filename}"
+        supabase.table('safety_analyses').update({
+            'report_generated': True,
+            'report_url': report_url,
+            'report_generated_at': datetime.now().isoformat(),
+            'site_name': site_name,
+            'contractor_name': contractor_name,
+            'submitted_to': submitted_to
+        }).eq('id', analysis_id).execute()
+        
+        return jsonify({
+            'success': True,
+            'report_url': report_url,
+            'message': 'Report generated successfully'
+        })
+        
+    except Exception as e:
+        print(f"Error generating report: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/reports/<filename>', methods=['GET'])
+def serve_report(filename):
+    """Serve generated PDF reports"""
+    try:
+        reports_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'reports')
+        filepath = os.path.join(reports_dir, filename)
+        
+        if not os.path.exists(filepath):
+            return jsonify({'error': 'Report not found'}), 404
+        
+        return send_file(filepath, mimetype='application/pdf', as_attachment=True)
+        
+    except Exception as e:
+        print(f"Error serving report: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/analyses/<analysis_id>/report', methods=['GET'])
+def get_report_status(analysis_id):
+    """Check if report has been generated for this analysis"""
+    try:
+        if not supabase:
+            return jsonify({'error': 'Supabase not configured'}), 503
+        
+        result = supabase.table('safety_analyses').select('report_generated, report_url, report_generated_at, site_name, contractor_name, submitted_to').eq('id', analysis_id).execute()
+        
+        if not result.data or len(result.data) == 0:
+            return jsonify({'error': 'Analysis not found'}), 404
+        
+        return jsonify(result.data[0])
+        
+    except Exception as e:
+        print(f"Error checking report status: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

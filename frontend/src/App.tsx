@@ -3,6 +3,7 @@ import Header from './components/Header'
 import ImageUpload from './components/ImageUpload'
 import ResultsDisplay from './components/ResultsDisplay'
 import Sidebar from './components/Sidebar'
+import ReportsList from './components/ReportsList'
 import { API_URL } from './config'
 import './styles/App.css'
 
@@ -58,6 +59,7 @@ interface AnalysisResult {
 }
 
 function App() {
+  const [activeTab, setActiveTab] = useState<'analysis' | 'reports'>('analysis')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -133,36 +135,64 @@ function App() {
     <div className="app">
       <Header />
       
-      <div className="app-layout">
-        <Sidebar onSelectAnalysis={handleSelectAnalysis} selectedAnalysisId={result?.id} />
-        
-        <main className="main-content">
-          {!result && !loading && (
-            <ImageUpload onUpload={handleImageUpload} />
-          )}
-
-          {loading && (
-            <div className="loading">
-              <div className="spinner"></div>
-              <p>Analyzing image for safety compliance...</p>
-            </div>
-          )}
-
-          {error && (
-            <div className="error">
-              <h2>Error</h2>
-              <p>{error}</p>
-              <button onClick={handleReset} className="btn-secondary">
-                Try Again
-              </button>
-            </div>
-          )}
-
-          {result && (
-            <ResultsDisplay result={result} onReset={handleReset} />
-          )}
-        </main>
+      {/* Tabs */}
+      <div className="tabs-container">
+        <div className="tabs">
+          <button
+            className={`tab ${activeTab === 'analysis' ? 'active' : ''}`}
+            onClick={() => setActiveTab('analysis')}
+          >
+            Photo Analysis
+          </button>
+          <button
+            className={`tab ${activeTab === 'reports' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reports')}
+          >
+            Compliance Reports
+          </button>
+        </div>
       </div>
+      
+      {/* Photo Analysis Tab */}
+      {activeTab === 'analysis' && (
+        <div className="app-layout">
+          <Sidebar onSelectAnalysis={handleSelectAnalysis} selectedAnalysisId={result?.id} />
+          
+          <main className="main-content">
+            {!result && !loading && (
+              <ImageUpload onUpload={handleImageUpload} />
+            )}
+
+            {loading && (
+              <div className="loading">
+                <div className="spinner"></div>
+                <p>Analyzing image for safety compliance...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="error">
+                <h2>Error</h2>
+                <p>{error}</p>
+                <button onClick={handleReset} className="btn-secondary">
+                  Try Again
+                </button>
+              </div>
+            )}
+
+            {result && (
+              <ResultsDisplay result={result} onReset={handleReset} />
+            )}
+          </main>
+        </div>
+      )}
+
+      {/* Compliance Reports Tab */}
+      {activeTab === 'reports' && (
+        <div className="container">
+          <ReportsList />
+        </div>
+      )}
 
       <footer>
         <p>Built with YOLOv8 + Tesseract OCR</p>
