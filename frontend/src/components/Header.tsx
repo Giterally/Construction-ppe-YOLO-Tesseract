@@ -10,9 +10,6 @@ export default function Header() {
             Computer Vision & Document Cross-Check
           </span>
         </h1>
-        <p className="subtitle">
-          Automated detection of workers and safety signage using computer vision
-        </p>
         <blockquote className="quote">
           <p>"Every business uses their <strong>own system</strong> for <strong>compliance & health and safety</strong> so the <strong>supply chain</strong> has to do something <strong>different on every job</strong> — that leads to <strong>tens if not hundreds of different systems</strong> for an <strong>SME</strong> to learn and do."</p>
           <p>"There is <strong>no increase or improvement in productivity</strong> as every time you have to <strong>do something different</strong> there is a <strong>drag on your time</strong>."</p>
