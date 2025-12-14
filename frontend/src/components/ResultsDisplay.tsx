@@ -227,7 +227,7 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
       {/* Document Requirements Section */}
       {result.document_provided && result.document_requirements && (
         <div className="document-requirements-section">
-          <h3>📄 {result.document_name || 'Regulation Requirements'}</h3>
+          <h3>{result.document_name || 'Regulation Requirements'}</h3>
           
           {result.document_requirements.ppe_requirements && 
            result.document_requirements.ppe_requirements.length > 0 && (
@@ -314,7 +314,7 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
       {/* Cross-Check Results */}
       {result.document_provided && result.cross_check && (
         <div className="cross-check-section">
-          <h3>⚙️ Document Cross-Check Analysis</h3>
+          <h3>Document Cross-Check Analysis</h3>
 
           {/* Regulatory Compliance Status */}
           <div className="regulatory-status">

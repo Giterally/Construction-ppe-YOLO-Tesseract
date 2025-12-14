@@ -251,7 +251,7 @@ export default function ImageUpload({ onUpload }: ImageUploadProps) {
                     className="btn-view-document"
                     disabled={!documents.find(d => d.id === selectedDocument)?.official_link}
                   >
-                    📄 View Official Regulation
+                    View Official Regulation
                   </button>
                   <details className="document-requirements-preview">
                     <summary>View Requirements Checklist</summary>
