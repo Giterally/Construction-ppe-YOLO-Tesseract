@@ -137,7 +137,7 @@ def get_image(filename):
     except Exception as e:
         return jsonify({'error': 'Image not found'}), 404
 
-@app.route('/api/analyses/all', methods=['DELETE'])
+@app.route('/api/clear-all-analyses', methods=['DELETE'])
 def delete_all_analyses():
     """Delete all safety compliance analyses"""
     if not supabase:

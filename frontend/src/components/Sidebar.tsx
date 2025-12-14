@@ -103,7 +103,7 @@ export default function Sidebar({ onSelectAnalysis }: SidebarProps) {
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/analyses/all`, {
+      const response = await fetch(`${API_URL}/api/clear-all-analyses`, {
         method: 'DELETE'
       })
 
