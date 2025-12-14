@@ -318,6 +318,9 @@ def save_analysis_to_db(results: dict):
         
             # Get OCR processing steps from results
             ocr_steps = results.get('ocr_processing_steps')
+            print(f"🔍 DEBUG: ocr_processing_steps in results: {ocr_steps is not None}, type: {type(ocr_steps)}")
+            if ocr_steps:
+                print(f"🔍 DEBUG: ocr_steps length: {len(ocr_steps) if isinstance(ocr_steps, list) else 'not a list'}")
             if ocr_steps is None:
                 ocr_steps = []
             
@@ -334,17 +337,18 @@ def save_analysis_to_db(results: dict):
                 'document_name': results.get('document_name'),
                 'document_requirements': results.get('document_requirements'),
                 'cross_check': results.get('cross_check'),
-                'ocr_processing_steps': ocr_steps
+                'ocr_processing_steps': ocr_steps if ocr_steps else None
             }
             
             # Debug: Print OCR steps to verify they're being saved
+            print(f"🔍 DEBUG: data['ocr_processing_steps'] = {data.get('ocr_processing_steps')}")
             if ocr_steps:
                 print(f"💾 Saving {len(ocr_steps)} OCR processing steps to database")
             else:
                 print(f"⚠️  No OCR processing steps found in results")
         
-        supabase.table('safety_analyses').insert(data).execute()
-        print(f"✅ Saved analysis to Supabase")
+        result = supabase.table('safety_analyses').insert(data).execute()
+        print(f"✅ Saved analysis to Supabase, inserted: {result.data[0]['id'] if result.data else 'unknown'}")
     except Exception as e:
         print(f"⚠️  Failed to save to Supabase: {e}")
 
