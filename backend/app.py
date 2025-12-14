@@ -154,9 +154,26 @@ def get_analyses():
             .offset(offset)\
             .execute()
         
+        # Convert image URLs from absolute to relative for frontend
+        analyses = response.data
+        for analysis in analyses:
+            # Convert original_image_url to original_image
+            if 'original_image_url' in analysis and analysis['original_image_url']:
+                analysis['original_image'] = analysis['original_image_url'].replace('http://localhost:5001', '')
+            # Convert annotated_image_url to annotated_image
+            if 'annotated_image_url' in analysis and analysis['annotated_image_url']:
+                analysis['annotated_image'] = analysis['annotated_image_url'].replace('http://localhost:5001', '')
+            # Convert image URLs in ocr_processing_steps from absolute to relative
+            if 'ocr_processing_steps' in analysis and analysis['ocr_processing_steps']:
+                for step in analysis['ocr_processing_steps']:
+                    if 'image' in step and step['image']:
+                        step['image'] = step['image'].replace('http://localhost:5001', '')
+                    if 'highlighted_image' in step and step['highlighted_image']:
+                        step['highlighted_image'] = step['highlighted_image'].replace('http://localhost:5001', '')
+        
         return jsonify({
-            'analyses': response.data,
-            'count': len(response.data)
+            'analyses': analyses,
+            'count': len(analyses)
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
