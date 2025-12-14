@@ -316,36 +316,45 @@ def save_analysis_to_db(results: dict):
         else:
             annotated_image_url = f"http://localhost:5001/api/images/{annotated_image}"
         
-            # Get OCR processing steps from results
-            ocr_steps = results.get('ocr_processing_steps')
-            print(f"🔍 DEBUG: ocr_processing_steps in results: {ocr_steps is not None}, type: {type(ocr_steps)}")
-            if ocr_steps:
-                print(f"🔍 DEBUG: ocr_steps length: {len(ocr_steps) if isinstance(ocr_steps, list) else 'not a list'}")
-            if ocr_steps is None:
-                ocr_steps = []
-            
-            data = {
-                'original_image_url': original_image_url,
-                'annotated_image_url': annotated_image_url,
-                'people_count': results.get('people_count', 0),
-                'signage_text': results.get('signage_text', ''),
-                'violations': results.get('violations', []),
-                'detections': results.get('detections', []),
-                'compliance_score': results.get('compliance_score', 0),
-                'document_provided': results.get('document_provided', False),
-                'document_id': results.get('document_id'),
-                'document_name': results.get('document_name'),
-                'document_requirements': results.get('document_requirements'),
-                'cross_check': results.get('cross_check'),
-                'ocr_processing_steps': ocr_steps if ocr_steps else None
-            }
-            
-            # Debug: Print OCR steps to verify they're being saved
-            print(f"🔍 DEBUG: data['ocr_processing_steps'] = {data.get('ocr_processing_steps')}")
-            if ocr_steps:
-                print(f"💾 Saving {len(ocr_steps)} OCR processing steps to database")
-            else:
-                print(f"⚠️  No OCR processing steps found in results")
+        # Convert OCR step image URLs to absolute for Supabase storage
+        ocr_steps_for_db = []
+        ocr_steps = results.get('ocr_processing_steps')
+        print(f"🔍 DEBUG: ocr_processing_steps in results: {ocr_steps is not None}, type: {type(ocr_steps)}")
+        if ocr_steps:
+            print(f"🔍 DEBUG: ocr_steps length: {len(ocr_steps) if isinstance(ocr_steps, list) else 'not a list'}")
+            # Convert image URLs in OCR steps to absolute for database storage
+            for step in ocr_steps:
+                step_copy = step.copy()
+                if 'image' in step_copy and step_copy['image'] and step_copy['image'].startswith('/api/images/'):
+                    step_copy['image'] = f"http://localhost:5001{step_copy['image']}"
+                if 'highlighted_image' in step_copy and step_copy['highlighted_image'] and step_copy['highlighted_image'].startswith('/api/images/'):
+                    step_copy['highlighted_image'] = f"http://localhost:5001{step_copy['highlighted_image']}"
+                ocr_steps_for_db.append(step_copy)
+        else:
+            ocr_steps_for_db = None
+        
+        data = {
+            'original_image_url': original_image_url,
+            'annotated_image_url': annotated_image_url,
+            'people_count': results.get('people_count', 0),
+            'signage_text': results.get('signage_text', ''),
+            'violations': results.get('violations', []),
+            'detections': results.get('detections', []),
+            'compliance_score': results.get('compliance_score', 0),
+            'document_provided': results.get('document_provided', False),
+            'document_id': results.get('document_id'),
+            'document_name': results.get('document_name'),
+            'document_requirements': results.get('document_requirements'),
+            'cross_check': results.get('cross_check'),
+            'ocr_processing_steps': ocr_steps_for_db
+        }
+        
+        # Debug: Print OCR steps to verify they're being saved
+        print(f"🔍 DEBUG: data['ocr_processing_steps'] = {data.get('ocr_processing_steps')}")
+        if ocr_steps_for_db:
+            print(f"💾 Saving {len(ocr_steps_for_db)} OCR processing steps to database")
+        else:
+            print(f"⚠️  No OCR processing steps found in results")
         
         result = supabase.table('safety_analyses').insert(data).execute()
         print(f"✅ Saved analysis to Supabase, inserted: {result.data[0]['id'] if result.data else 'unknown'}")
