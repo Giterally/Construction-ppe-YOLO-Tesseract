@@ -112,7 +112,8 @@ function App() {
       document_id: analysis.document_id,
       document_name: analysis.document_name,
       document_requirements: analysis.document_requirements,
-      cross_check: analysis.cross_check
+      cross_check: analysis.cross_check,
+      ocr_processing_steps: analysis.ocr_processing_steps || []
     })
   }
 
