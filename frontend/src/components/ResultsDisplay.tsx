@@ -334,6 +334,9 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
               style={{background: '#f0f0f0', color: '#666', border: '1px solid #ddd', textDecoration: 'none', display: 'inline-block'}}
             >
               CDM 2015
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" style={{display: 'inline-block', marginLeft: '4px', verticalAlign: 'middle'}}>
+                <path d="M10 2L2 10M10 2H6M10 2V6M2 10H6M2 10V6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </a>
             <a 
               href="https://www.hse.gov.uk/construction/index.htm" 
@@ -343,6 +346,9 @@ export default function ResultsDisplay({ result, onReset }: ResultsDisplayProps)
               style={{background: '#f0f0f0', color: '#666', border: '1px solid #ddd', textDecoration: 'none', display: 'inline-block'}}
             >
               HSE Guidelines
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" style={{display: 'inline-block', marginLeft: '4px', verticalAlign: 'middle'}}>
+                <path d="M10 2L2 10M10 2H6M10 2V6M2 10H6M2 10V6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
             </a>
           </div>
 
