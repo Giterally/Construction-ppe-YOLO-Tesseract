@@ -2,13 +2,23 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from detector import SafetyComplianceDetector, create_annotated_image
 from document_processor import DocumentProcessor
-from report_generator import generate_compliance_report
 from datetime import datetime
 import os
 import uuid
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from supabase import create_client, Client
+
+# Try to import report generator (optional - requires weasyprint)
+try:
+    from report_generator import generate_compliance_report
+    REPORT_GENERATOR_AVAILABLE = True
+except (ImportError, OSError) as e:
+    print(f"⚠️  Report generator not available: {e}")
+    print("⚠️  Install weasyprint and system dependencies to enable PDF report generation")
+    print("⚠️  On macOS: brew install gobject-introspection cairo pango gdk-pixbuf libffi")
+    REPORT_GENERATOR_AVAILABLE = False
+    generate_compliance_report = None
 
 # Load environment variables
 load_dotenv()
@@ -454,6 +464,11 @@ def generate_report_for_analysis(analysis_id):
     Generate PDF report for a specific analysis
     Accepts optional metadata (site_name, contractor_name, submitted_to)
     """
+    if not REPORT_GENERATOR_AVAILABLE:
+        return jsonify({
+            'error': 'PDF report generation is not available. Please install weasyprint and required system dependencies.'
+        }), 503
+    
     try:
         # Get optional metadata from request
         data = request.get_json() or {}
