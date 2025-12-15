@@ -20,8 +20,18 @@ except (ImportError, OSError) as e:
     REPORT_GENERATOR_AVAILABLE = False
     generate_compliance_report = None
 
-# Load environment variables
+# Load environment variables first
 load_dotenv()
+
+# Try to import chat agent (optional - requires OpenAI)
+try:
+    from chat_agent import SafetyAssistant
+    chat_assistant = SafetyAssistant()
+    CHAT_ASSISTANT_AVAILABLE = True
+except Exception as e:
+    print(f"⚠️  Chat assistant not available: {e}")
+    CHAT_ASSISTANT_AVAILABLE = False
+    chat_assistant = None
 
 app = Flask(__name__)
 CORS(app)
@@ -577,6 +587,121 @@ def get_report_status(analysis_id):
         
     except Exception as e:
         print(f"Error checking report status: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """
+    Chat endpoint for Safety Assistant
+    Accepts: { "message": str, "analysis_id": str (optional) }
+    Returns: { "response": str, "message_id": str }
+    """
+    if not CHAT_ASSISTANT_AVAILABLE:
+        return jsonify({'error': 'Chat assistant is not available. Please configure OpenAI API key.'}), 503
+    
+    try:
+        data = request.get_json()
+        user_message = data.get('message', '').strip()
+        analysis_id = data.get('analysis_id')  # Optional - most recent if not provided
+        
+        if not user_message:
+            return jsonify({'error': 'Message cannot be empty'}), 400
+        
+        if not supabase:
+            return jsonify({'error': 'Supabase not configured'}), 503
+        
+        # Get latest analysis if no specific ID provided
+        latest_analysis = None
+        if analysis_id:
+            result = supabase.table('safety_analyses').select('*').eq('id', analysis_id).execute()
+            if result.data and len(result.data) > 0:
+                latest_analysis = result.data[0]
+        else:
+            # Get most recent analysis
+            result = supabase.table('safety_analyses').select('*').order('created_at', desc=True).limit(1).execute()
+            if result.data and len(result.data) > 0:
+                latest_analysis = result.data[0]
+                analysis_id = latest_analysis['id']
+        
+        # Get ALL past analyses for context
+        past_analyses = []
+        result = supabase.table('safety_analyses').select('*').order('created_at', desc=True).execute()
+        if result.data:
+            past_analyses = result.data
+        
+        # Get AI response
+        result = chat_assistant.answer_question(
+            question=user_message,
+            latest_analysis=latest_analysis,
+            past_analyses=past_analyses
+        )
+        
+        ai_response = result['response']
+        
+        # Save to database
+        chat_record = {
+            'analysis_id': analysis_id,
+            'user_message': user_message,
+            'ai_response': ai_response,
+            'context_data': {
+                'has_photo': latest_analysis is not None,
+                'confidence': result.get('confidence', 'medium')
+            }
+        }
+        
+        saved = supabase.table('chat_messages').insert(chat_record).execute()
+        message_id = saved.data[0]['id'] if saved.data else None
+        
+        return jsonify({
+            'response': ai_response,
+            'message_id': message_id,
+            'analysis_id': analysis_id,
+            'has_photo_context': latest_analysis is not None
+        })
+        
+    except Exception as e:
+        print(f"Error in chat endpoint: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat/history', methods=['GET'])
+def get_chat_history():
+    """Get recent chat history (last 20 messages)"""
+    try:
+        if not supabase:
+            return jsonify({'error': 'Supabase not configured'}), 503
+        
+        result = supabase.table('chat_messages').select('*').order('created_at', desc=True).limit(20).execute()
+        
+        messages = result.data if result.data else []
+        
+        # Reverse to get chronological order
+        messages.reverse()
+        
+        return jsonify({
+            'messages': messages,
+            'count': len(messages)
+        })
+        
+    except Exception as e:
+        print(f"Error fetching chat history: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/chat/clear', methods=['POST'])
+def clear_chat_history():
+    """Clear all chat history"""
+    try:
+        if not supabase:
+            return jsonify({'error': 'Supabase not configured'}), 503
+        
+        # Delete all messages
+        supabase.table('chat_messages').delete().neq('id', '00000000-0000-0000-0000-000000000000').execute()
+        
+        return jsonify({'success': True, 'message': 'Chat history cleared'})
+        
+    except Exception as e:
+        print(f"Error clearing chat: {e}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

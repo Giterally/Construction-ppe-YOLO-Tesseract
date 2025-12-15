@@ -4,6 +4,7 @@ import ImageUpload from './components/ImageUpload'
 import ResultsDisplay from './components/ResultsDisplay'
 import Sidebar from './components/Sidebar'
 import ReportsList from './components/ReportsList'
+import SafetyAssistant from './components/SafetyAssistant'
 import { API_URL } from './config'
 import './styles/App.css'
 
@@ -59,7 +60,7 @@ interface AnalysisResult {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'analysis' | 'reports'>('analysis')
+  const [activeTab, setActiveTab] = useState<'analysis' | 'reports' | 'assistant'>('analysis')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -150,6 +151,12 @@ function App() {
           >
             Compliance Reports
           </button>
+          <button
+            className={`tab ${activeTab === 'assistant' ? 'active' : ''}`}
+            onClick={() => setActiveTab('assistant')}
+          >
+            Safety Assistant
+          </button>
         </div>
       </div>
       
@@ -191,6 +198,13 @@ function App() {
       {activeTab === 'reports' && (
         <div className="container">
           <ReportsList />
+        </div>
+      )}
+
+      {/* Safety Assistant Tab */}
+      {activeTab === 'assistant' && (
+        <div className="container">
+          <SafetyAssistant />
         </div>
       )}
 
