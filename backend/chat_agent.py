@@ -6,28 +6,31 @@ from openai import OpenAI
 import os
 import json
 from typing import Dict, List, Optional
+from document_processor import UK_CONSTRUCTION_DOCUMENTS
 
-# UK Regulations Knowledge Base (reuse from document_processor.py if exists)
-UK_REGULATIONS_KNOWLEDGE = {
-    "CDM_2015": {
-        "working_at_height": "Edge protection required at 2m or more from any edge. Guardrails at 950mm height with mid-rail and toe board.",
-        "scaffold_inspection": "Scaffolds must be inspected every 7 days and after adverse weather conditions.",
-        "scaffold_loading": "Platform loading must not exceed design limits. Maximum workers per platform based on platform width.",
-        "excavations": "Excavations over 1.2m deep require edge protection and safe access/egress.",
-        "confined_spaces": "Permit to Work required. Gas testing mandatory. Emergency rescue equipment must be available.",
-    },
-    "HSE_CONSTRUCTION": {
-        "ppe_requirements": "Hard hats, high-visibility clothing, and safety footwear mandatory on all construction sites.",
-        "hot_work": "Hot work permits required for welding/cutting. Fire extinguisher within 5m. Fire watch required.",
-        "lifting_operations": "Lifting equipment must be inspected every 6 months. Banksman required for crane operations.",
-        "electrical_safety": "110V equipment on construction sites. Residual current devices (RCDs) required.",
-    },
-    "BS_5973": {
-        "scaffold_width": "Working platforms must be at least 600mm wide for passage, 800mm for working.",
-        "guardrails": "Guardrails required at 950mm height with mid-rail at 470mm and toe board at 150mm.",
-        "inspection_frequency": "Inspect before first use, every 7 days, after adverse weather, after alterations.",
+# Build comprehensive UK Regulations Knowledge Base from all 8 documents
+UK_REGULATIONS_KNOWLEDGE = {}
+
+for doc_id, doc_data in UK_CONSTRUCTION_DOCUMENTS.items():
+    doc_name = doc_data["name"]
+    requirements = doc_data.get("requirements", {})
+    
+    # Create a summary structure for the chat agent
+    knowledge_entry = {
+        "name": doc_name,
+        "description": doc_data.get("description", ""),
+        "official_link": doc_data.get("official_link", ""),
+        "ppe_requirements": requirements.get("ppe_requirements", []),
+        "access_requirements": requirements.get("access_requirements", []),
+        "equipment_requirements": requirements.get("equipment_requirements", []),
+        "personnel_limits": requirements.get("personnel_limits", {}),
+        "inspection_requirements": requirements.get("inspection_requirements", []),
+        "zone_requirements": requirements.get("zone_requirements", [])
     }
-}
+    
+    # Use a clean key name
+    clean_key = doc_id.upper().replace("_", " ")
+    UK_REGULATIONS_KNOWLEDGE[clean_key] = knowledge_entry
 
 class SafetyAssistant:
     def __init__(self, openai_api_key: str = None):
@@ -116,12 +119,24 @@ class SafetyAssistant:
             
             context_parts.append("")
         
-        # UK Regulations
-        context_parts.append("=== UK CONSTRUCTION REGULATIONS ===")
-        for reg_name, reg_content in UK_REGULATIONS_KNOWLEDGE.items():
-            context_parts.append(f"\n{reg_name}:")
-            for key, value in reg_content.items():
-                context_parts.append(f"  • {key.replace('_', ' ').title()}: {value}")
+        # UK Regulations - All 8 documents
+        context_parts.append("=== UK CONSTRUCTION REGULATIONS (All 8 Documents) ===")
+        for reg_key, reg_data in UK_REGULATIONS_KNOWLEDGE.items():
+            context_parts.append(f"\n{reg_data['name']}:")
+            context_parts.append(f"  Description: {reg_data.get('description', '')}")
+            
+            if reg_data.get('ppe_requirements'):
+                context_parts.append(f"  PPE Requirements: {', '.join(reg_data['ppe_requirements'][:3])}")
+            if reg_data.get('access_requirements'):
+                context_parts.append(f"  Access Requirements: {', '.join(reg_data['access_requirements'][:3])}")
+            if reg_data.get('equipment_requirements'):
+                context_parts.append(f"  Equipment Requirements: {', '.join(reg_data['equipment_requirements'][:3])}")
+            if reg_data.get('inspection_requirements'):
+                context_parts.append(f"  Inspection Requirements: {', '.join(reg_data['inspection_requirements'][:2])}")
+            if reg_data.get('personnel_limits'):
+                limits = reg_data['personnel_limits']
+                if limits.get('restrictions'):
+                    context_parts.append(f"  Personnel Restrictions: {limits['restrictions']}")
         
         return "\n".join(context_parts)
     
@@ -145,31 +160,41 @@ class SafetyAssistant:
         context = self.build_context(latest_analysis, past_analyses)
         
         # System prompt
-        system_prompt = """You are a friendly and helpful UK construction safety compliance assistant with expertise in CDM 2015, HSE guidelines, and BS standards.
+        system_prompt = """You are a friendly and helpful UK construction safety compliance assistant with expertise in all 8 UK construction regulation documents:
+1. CDM 2015 - General Construction Work
+2. CDM 2015 - Working at Height
+3. HSE - Construction Site PPE Requirements
+4. BS 5973 - Scaffold Safety Requirements
+5. HSE - Excavation Safety
+6. CDM 2015 - Crane Operations
+7. HSE - Confined Space Entry
+8. CDM 2015 - Demolition Work
 
 Your role:
 - Answer questions about construction site safety and compliance in a warm, approachable manner
 - Reference specific evidence from photo analysis when available
-- Cite relevant UK regulations (CDM 2015, HSE, BS standards)
+- Cite relevant UK regulations from the 8 documents above
 - Give clear, actionable answers
-- Use ✓ for compliant items, ⚠️ for warnings, ❌ for violations
 - Format responses with sections and bullet points for readability
 - Always prioritize worker safety
 - Be conversational and friendly, not robotic or argumentative
+- DO NOT use emojis in your responses - use text only (e.g., write "Compliant" instead of checkmarks, "Warning" instead of warning symbols, "Violation" instead of X symbols)
 
 When answering:
 1. For greetings or simple messages, respond warmly and offer to help with safety compliance questions
 2. Avoid starting with "NO" or negative language - instead, be positive and helpful
 3. Reference photo evidence (detections, OCR text, violations) when available
-4. Cite specific regulations when relevant
+4. Cite specific regulations from the 8 documents when relevant
 5. Provide actionable next steps
 6. Keep responses concise but friendly (2-3 short paragraphs max)
+7. Use plain text indicators: "Compliant", "Warning", "Violation" instead of emojis
 
 Tone guidelines:
 - Be welcoming and helpful, even for simple messages
 - Use phrases like "I'd be happy to help", "Let me check", "Based on your analyses"
 - For greetings, respond warmly and ask how you can help with safety compliance
-- If photo data is unavailable, acknowledge this in a friendly way and provide general guidance based on regulations"""
+- If photo data is unavailable, acknowledge this in a friendly way and provide general guidance based on regulations
+- Never use emojis, symbols, or special characters - use plain text only"""
 
         # Build messages
         messages = [
